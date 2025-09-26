@@ -1,0 +1,558 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO Pixelation Studio - Professional Image to LEGO Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    'inter': ['Inter', 'sans-serif'],
+                },
+                colors: {
+                    primary: '#1976D2',
+                    secondary: '#424242',
+                    accent: '#FF5722',
+                    success: '#4CAF50',
+                    warning: '#FF9800',
+                    error: '#F44336',
+                }
+            }
+        }
+    };
+    </script>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    <!-- @COMPONENT: Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cube text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">LEGO Pixelation Studio</h1>
+                        <p class="text-sm text-gray-500">Professional Image to LEGO Converter</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-question-circle text-lg"></i>
+                    </button>
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-cog text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- @COMPONENT: ProcessSteps -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-semibold text-gray-900">Create Your LEGO Mosaic</h2>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500">Step</span>
+                    <span class="bg-primary text-white px-2 py-1 rounded-full text-sm font-medium" data-bind="currentStep">1</span>
+                    <span class="text-sm text-gray-500">of 3</span>
+                </div>
+            </div>
+            
+            <!-- Progress Steps -->
+            <div class="flex items-center space-x-4 mb-8">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-medium">1</div>
+                    <span class="ml-2 text-sm font-medium text-gray-900">Upload Image</span>
+                </div>
+                <div class="w-16 h-0.5 bg-gray-300"></div>
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-medium">2</div>
+                    <span class="ml-2 text-sm text-gray-500">Configure Boards</span>
+                </div>
+                <div class="w-16 h-0.5 bg-gray-300"></div>
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-medium">3</div>
+                    <span class="ml-2 text-sm text-gray-500">Generate Guide</span>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ProcessSteps -->
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- @COMPONENT: UploadSection -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Upload Your Image</h3>
+                    
+                    <!-- File Upload Area -->
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary hover:bg-blue-50 transition-colors cursor-pointer" data-implementation="Implement file drop and selection">
+                        <div class="space-y-4">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                                <i class="fas fa-cloud-upload-alt text-2xl text-gray-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-lg font-medium text-gray-900">Drop your image here or click to browse</p>
+                                <p class="text-sm text-gray-500 mt-1">Supports PNG, JPG, JPEG up to 10MB</p>
+                            </div>
+                            <button class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                Choose File
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Upload Progress (Hidden by default) -->
+                    <div class="mt-4 hidden" data-state="uploadProgress">
+                        <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                            <span>Uploading image...</span>
+                            <span data-bind="uploadPercent">45%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 45%" data-bind="uploadProgressBar"></div>
+                        </div>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="mt-4 hidden" data-state="fileSelected">
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-image text-primary text-lg"></i>
+                                <div>
+                                    <p class="font-medium text-gray-900" data-bind="fileName">sample-image.jpg</p>
+                                    <p class="text-sm text-gray-500" data-bind="fileSize">2.4 MB • 1920×1080px</p>
+                                </div>
+                            </div>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div class="mt-6 hidden" data-state="imagePreview">
+                        <h4 class="text-md font-medium text-gray-900 mb-3">Original Image</h4>
+                        <div class="bg-gray-100 rounded-lg overflow-hidden">
+                            <!-- A vibrant colorful image suitable for LEGO pixelation -->
+                            <img src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=400" alt="Original uploaded image" class="w-full h-64 object-cover" data-mock-image="true" data-implementation="Display user uploaded image" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Board Configuration -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Board Configuration</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Number of Boards</label>
+                            <div class="flex items-center space-x-4">
+                                <button class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors" data-event="click:decrementBoards">
+                                    <i class="fas fa-minus text-gray-600"></i>
+                                </button>
+                                <span class="text-2xl font-semibold text-gray-900 min-w-[3rem] text-center" data-bind="boardCount">4</span>
+                                <button class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors" data-event="click:incrementBoards">
+                                    <i class="fas fa-plus text-gray-600"></i>
+                                </button>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">Each board = 32×32 LEGO tiles</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Board Layout</label>
+                            <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" data-bind="boardLayout">
+                                <option value="2x2">2×2 Grid (4 boards)</option>
+                                <option value="3x2">3×2 Grid (6 boards)</option>
+                                <option value="3x3">3×3 Grid (9 boards)</option>
+                                <option value="4x2">4×2 Grid (8 boards)</option>
+                                <option value="custom">Custom Layout</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-info-circle text-primary mt-0.5"></i>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Final Dimensions</p>
+                                <p class="text-sm text-gray-600" data-bind="finalDimensions">64×64 LEGO tiles (512×512mm)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors mt-6 font-medium" data-event="click:startPixelation">
+                        Start Pixelation Process
+                    </button>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: UploadSection -->
+
+            <!-- @COMPONENT: SidebarInfo -->
+            <div class="space-y-6">
+                <!-- LEGO Color Palette -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Available LEGO Colors</h3>
+                    <p class="text-sm text-gray-600 mb-4">39 custom colors in your inventory</p>
+                    
+                    <div class="grid grid-cols-6 gap-2">
+                        <!-- @MAP: legoColors.map(color => ( -->
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #FF0000" title="Bright Red" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #0080FF" title="Bright Blue" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #00FF00" title="Bright Green" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #FFFF00" title="Bright Yellow" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #FF8000" title="Bright Orange" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #800080" title="Dark Purple" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #000000" title="Black" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #FFFFFF" title="White" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #808080" title="Medium Stone Grey" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #8B4513" title="Dark Brown" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #FFC0CB" title="Light Pink" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #40E0D0" title="Medium Azur" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #90EE90" title="Bright Yellowish Green" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #DDA0DD" title="Medium Lavender" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #DAA520" title="Pearl Gold" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #C0C0C0" title="Metallic Silver" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #8FBC8F" title="Sand Green" data-mock="true"></div>
+                        <div class="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform" style="background-color: #F5DEB3" title="Tan" data-mock="true"></div>
+                        <!-- More color swatches... -->
+                        <!-- @END_MAP )) -->
+                    </div>
+                    
+                    <button class="text-sm text-primary hover:text-blue-700 font-medium mt-3">
+                        View All Colors <i class="fas fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- Project Statistics -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Project Statistics</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Total Tiles</span>
+                            <span class="font-semibold text-gray-900" data-bind="totalTiles">4,096</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Estimated Colors</span>
+                            <span class="font-semibold text-gray-900" data-bind="estimatedColors">24</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Build Time</span>
+                            <span class="font-semibold text-gray-900" data-bind="buildTime">~6 hours</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Difficulty</span>
+                            <span class="font-semibold text-warning" data-bind="difficulty">Intermediate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help & Tips -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Tips for Best Results</h3>
+                    
+                    <ul class="space-y-3 text-sm text-gray-600">
+                        <li class="flex items-start space-x-2">
+                            <i class="fas fa-lightbulb text-warning mt-0.5"></i>
+                            <span>Use high-contrast images for better pixelation</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <i class="fas fa-lightbulb text-warning mt-0.5"></i>
+                            <span>Square images work best for even board layouts</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <i class="fas fa-lightbulb text-warning mt-0.5"></i>
+                            <span>Avoid images with too much fine detail</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <i class="fas fa-lightbulb text-warning mt-0.5"></i>
+                            <span>Test with smaller board counts first</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: SidebarInfo -->
+        </div>
+
+        <!-- @COMPONENT: ProcessingView (Hidden by default) -->
+        <div class="hidden" data-state="processing">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                <div class="space-y-6">
+                    <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto animate-pulse">
+                        <i class="fas fa-cog text-white text-2xl animate-spin"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Processing Your Image</h3>
+                        <p class="text-gray-600">Converting to LEGO-compatible pixel format...</p>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 max-w-md mx-auto">
+                        <div class="bg-primary h-3 rounded-full transition-all duration-1000" style="width: 67%" data-bind="processingProgress"></div>
+                    </div>
+                    <p class="text-sm text-gray-500" data-bind="processingStep">Analyzing color palette...</p>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ProcessingView -->
+
+        <!-- @COMPONENT: ResultsView (Hidden by default) -->
+        <div class="hidden" data-state="results">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pixelated Result</h3>
+                    
+                    <!-- Grid overlay showing boards -->
+                    <div class="relative bg-gray-100 rounded-lg overflow-hidden">
+                        <div class="grid grid-cols-2 gap-1 p-2">
+                            <!-- @MAP: boards.map(board => ( -->
+                            <div class="bg-white border border-gray-300 aspect-square relative">
+                                <div class="absolute inset-0 grid grid-cols-8 gap-0.5 p-1">
+                                    <!-- Individual pixel tiles -->
+                                    <!-- @MAP: pixels.map(pixel => ( -->
+                                    <div class="aspect-square rounded-sm" style="background-color: #FF4444" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #44FF44" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #4444FF" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #FFFF44" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #FF44FF" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #44FFFF" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #888888" data-mock="true"></div>
+                                    <div class="aspect-square rounded-sm" style="background-color: #FFFFFF" data-mock="true"></div>
+                                    <!-- More pixels... -->
+                                    <!-- @END_MAP )) -->
+                                </div>
+                                <div class="absolute top-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
+                                    A1
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-300 aspect-square relative">
+                                <div class="absolute inset-0 grid grid-cols-8 gap-0.5 p-1">
+                                    <!-- More pixel representation -->
+                                </div>
+                                <div class="absolute top-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
+                                    B1
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-300 aspect-square relative">
+                                <div class="absolute top-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
+                                    A2
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-300 aspect-square relative">
+                                <div class="absolute top-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
+                                    B2
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex space-x-3">
+                        <button class="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>
+                            Download Image
+                        </button>
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Construction Guide</h3>
+                    
+                    <!-- Color Key -->
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium text-gray-900 mb-3">Color Key</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <!-- @MAP: usedColors.map(color => ( -->
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 rounded border border-gray-300" style="background-color: #FF4444" data-mock="true"></div>
+                                <span class="text-gray-700">Bright Red (124)</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 rounded border border-gray-300" style="background-color: #44FF44" data-mock="true"></div>
+                                <span class="text-gray-700">Bright Green (89)</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 rounded border border-gray-300" style="background-color: #4444FF" data-mock="true"></div>
+                                <span class="text-gray-700">Bright Blue (156)</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 rounded border border-gray-300" style="background-color: #FFFF44" data-mock="true"></div>
+                                <span class="text-gray-700">Bright Yellow (67)</span>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Assembly Instructions -->
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium text-gray-900 mb-3">Assembly Order</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded">
+                                <span class="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-medium">1</span>
+                                <span class="text-gray-700">Start with board A1 (top-left)</span>
+                            </div>
+                            <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded">
+                                <span class="w-6 h-6 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-xs font-medium">2</span>
+                                <span class="text-gray-700">Attach board B1 to the right</span>
+                            </div>
+                            <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded">
+                                <span class="w-6 h-6 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-xs font-medium">3</span>
+                                <span class="text-gray-700">Add bottom row (A2, B2)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button class="w-full bg-success text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                            <i class="fas fa-file-pdf mr-2"></i>
+                            Download Construction Guide
+                        </button>
+                        <button class="w-full border border-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-print mr-2"></i>
+                            Print Instructions
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Board Details -->
+            <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Individual Board Details</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- @MAP: boards.map(board => ( -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-medium text-gray-900">Board A1</h4>
+                            <button class="text-primary hover:text-blue-700 text-sm">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                        <div class="bg-gray-100 rounded aspect-square mb-3 grid grid-cols-8 gap-0.5 p-1">
+                            <!-- Simplified board preview -->
+                            <div class="bg-red-400 rounded-sm"></div>
+                            <div class="bg-green-400 rounded-sm"></div>
+                            <div class="bg-blue-400 rounded-sm"></div>
+                            <div class="bg-yellow-400 rounded-sm"></div>
+                            <!-- More tiles... -->
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            <div class="flex justify-between">
+                                <span>Colors:</span>
+                                <span>8</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Tiles:</span>
+                                <span>1,024</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                    <!-- More boards... -->
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ResultsView -->
+    </main>
+
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500">© 2024 LEGO Pixelation Studio. Professional mosaic creation tool.</p>
+                <div class="flex items-center space-x-6 text-sm text-gray-500">
+                    <a href="#" class="hover:text-gray-700">Support</a>
+                    <a href="#" class="hover:text-gray-700">Documentation</a>
+                    <a href="#" class="hover:text-gray-700">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+    (function() {
+        // TODO: Implement file upload functionality
+        // TODO: Implement pixelation algorithm
+        // TODO: Implement board configuration logic
+        // TODO: Implement construction guide generation
+        // TODO: Implement download functionality
+        
+        // Basic UI state management for demo
+        const states = {
+            currentStep: 1,
+            uploadProgress: false,
+            fileSelected: false,
+            imagePreview: false,
+            processing: false,
+            results: false
+        };
+
+        // Demo progress simulation
+        function simulateProgress() {
+            // This would be replaced with actual pixelation logic
+            console.log('Simulating pixelation process...');
+        }
+
+        // File drag and drop handling
+        const uploadArea = document.querySelector('[data-implementation="Implement file drop and selection"]');
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('border-primary', 'bg-blue-50');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('border-primary', 'bg-blue-50');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('border-primary', 'bg-blue-50');
+                // TODO: Handle file drop
+                console.log('File dropped:', e.dataTransfer.files[0]);
+            });
+        }
+
+        // Board count controls
+        const decrementBtn = document.querySelector('[data-event="click:decrementBoards"]');
+        const incrementBtn = document.querySelector('[data-event="click:incrementBoards"]');
+        const boardCountDisplay = document.querySelector('[data-bind="boardCount"]');
+
+        if (decrementBtn && incrementBtn && boardCountDisplay) {
+            let boardCount = 4;
+            
+            decrementBtn.addEventListener('click', () => {
+                if (boardCount > 1) {
+                    boardCount--;
+                    boardCountDisplay.textContent = boardCount;
+                }
+            });
+
+            incrementBtn.addEventListener('click', () => {
+                if (boardCount < 16) {
+                    boardCount++;
+                    boardCountDisplay.textContent = boardCount;
+                }
+            });
+        }
+
+        // Start pixelation button
+        const startBtn = document.querySelector('[data-event="click:startPixelation"]');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                // TODO: Validate inputs and start processing
+                console.log('Starting pixelation process...');
+                simulateProgress();
+            });
+        }
+    })();
+    </script>
+</body>
+</html>

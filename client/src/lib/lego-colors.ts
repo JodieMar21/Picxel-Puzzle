@@ -1,0 +1,46 @@
+export interface BrickColor {
+  name: string;
+  hex: string;
+}
+
+export const BRICK_COLORS: BrickColor[] = [
+  { name: "Cactus", hex: "#000000" },
+  { name: "Basketball Court", hex: "#3C3C3C" },
+  { name: "Kite", hex: "#5F5F5F" },
+  { name: "Controller", hex: "#A0A0A0" },
+  { name: "Soccer Ball", hex: "#F5F5F5" },
+  { name: "Hamburger", hex: "#5A1E0A" },
+  { name: "Basketball", hex: "#780000" },
+  { name: "Watermelon", hex: "#AA0000" },
+  { name: "Football", hex: "#E65064" },
+  { name: "Pokercard", hex: "#FFC8E6" },
+  { name: "Finishing Flag", hex: "#C855A0" },
+  { name: "Rocket", hex: "#9B0069" },
+  { name: "Hotdog", hex: "#4B5528" },
+  { name: "Cocktail Glass", hex: "#005032" },
+  { name: "Clapperboard", hex: "#00785A" },
+  { name: "Game Controller", hex: "#00A528" },
+  { name: "French Fries", hex: "#A0C814" },
+  { name: "Popsicle", hex: "#AAFFAA" },
+  { name: "Bread", hex: "#825032" },
+  { name: "Ghost", hex: "#AF9655" },
+  { name: "Fried Egg", hex: "#787355" },
+  { name: "Cupcake", hex: "#648264" },
+  { name: "Biscuit", hex: "#C7925B" },
+  { name: "Sunglasses", hex: "#FFA546" },
+  { name: "Carrot", hex: "#F0876E" },
+  { name: "Pizza", hex: "#FAAA82" },
+  { name: "Guitar", hex: "#FFFC30" },
+  { name: "Crayon", hex: "#F0DC96" },
+  { name: "Lemon", hex: "#FFFF96" },
+  { name: "Backboard", hex: "#FFDCC8" },
+  { name: "Hourglass", hex: "#5A4196" },
+  { name: "Tv", hex: "#2D1473" },
+  { name: "Table Tennis", hex: "#505F78" },
+  { name: "Usb", hex: "#00468C" },
+  { name: "Mouse", hex: "#006EB4" },
+  { name: "Balloon", hex: "#5FA5F5" },
+  { name: "Diskette", hex: "#46D2E6" },
+  { name: "Heart", hex: "#B9FFEB" },
+  { name: "Crosswords", hex: "#D88571" }
+];
