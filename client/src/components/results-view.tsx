@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Expand, FileText, Printer, Edit3, X, Save } from "lucide-react";
+import { Download, Expand, FileText, Printer, Edit3, X, Save, ArrowLeft } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,13 @@ interface ResultsViewProps {
   results: PixelationResult;
   boardCount: number;
   boardLayout: string;
+  boardRows: number;
+  boardCols: number;
   projectId?: string;
+  onGoBack?: () => void;
 }
 
-export default function ResultsView({ results, boardCount, boardLayout, projectId }: ResultsViewProps) {
+export default function ResultsView({ results, boardCount, boardLayout, boardRows, boardCols, projectId, onGoBack }: ResultsViewProps) {
   const { toast } = useToast();
   const { pixelatedImageData, colorMap, boards, totalTiles } = results;
   const [isEditing, setIsEditing] = useState(false);
@@ -262,9 +265,22 @@ export default function ResultsView({ results, boardCount, boardLayout, projectI
 
   return (
     <div className="space-y-8">
-      {/* Mode Toggle */}
+      {/* Header with Back Button and Mode Toggle */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
+        <div className="flex items-center space-x-4">
+          {onGoBack && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onGoBack}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Configuration</span>
+            </Button>
+          )}
+          <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
+        </div>
         <div className="flex items-center space-x-3">
           <Button 
             variant="outline"
@@ -466,6 +482,8 @@ export default function ResultsView({ results, boardCount, boardLayout, projectI
         result={currentResults}
         boardCount={boardCount}
         boardLayout={boardLayout}
+        boardRows={boardRows}
+        boardCols={boardCols}
         onClick={() => setShowExpandedView(true)}
       />
 
@@ -684,6 +702,8 @@ export default function ResultsView({ results, boardCount, boardLayout, projectI
               result={currentResults}
               boardCount={boardCount}
               boardLayout={boardLayout}
+              boardRows={boardRows}
+              boardCols={boardCols}
               expandedMode={true}
             />
           </div>

@@ -15,6 +15,9 @@ export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [boardCount, setBoardCount] = useState(4);
   const [boardLayout, setBoardLayout] = useState("2x2");
+  const [boardRows, setBoardRows] = useState(2);
+  const [boardCols, setBoardCols] = useState(2);
+  const [projectName, setProjectName] = useState('');
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState<PixelationResult | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -34,6 +37,12 @@ export default function Home() {
   const handleProcessingComplete = (result: PixelationResult) => {
     setResults(result);
     setProcessing(false);
+  };
+
+  const handleGoBack = () => {
+    setResults(null);
+    setProcessing(false);
+    setCurrentStep(2); // Go back to Configure Boards step
   };
 
   const steps = [
@@ -125,7 +134,10 @@ export default function Home() {
             results={results} 
             boardCount={boardCount}
             boardLayout={boardLayout}
-            projectId={projectId}
+            boardRows={boardRows}
+            boardCols={boardCols}
+            projectId={projectId || undefined}
+            onGoBack={handleGoBack}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -143,6 +155,12 @@ export default function Home() {
                   setBoardCount={setBoardCount}
                   boardLayout={boardLayout}
                   setBoardLayout={setBoardLayout}
+                  boardRows={boardRows}
+                  setBoardRows={setBoardRows}
+                  boardCols={boardCols}
+                  setBoardCols={setBoardCols}
+                  projectName={projectName}
+                  setProjectName={setProjectName}
                   uploadedImage={uploadedImage}
                   imagePreview={imagePreview}
                   onStartPixelation={handleStartPixelation}

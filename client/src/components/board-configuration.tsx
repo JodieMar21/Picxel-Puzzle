@@ -15,6 +15,12 @@ interface BoardConfigurationProps {
   setBoardCount: (count: number) => void;
   boardLayout: string;
   setBoardLayout: (layout: string) => void;
+  boardRows: number;
+  setBoardRows: (rows: number) => void;
+  boardCols: number;
+  setBoardCols: (cols: number) => void;
+  projectName: string;
+  setProjectName: (name: string) => void;
   uploadedImage: File;
   imagePreview: string;
   onStartPixelation: (projectId: string) => void;
@@ -24,19 +30,26 @@ export default function BoardConfiguration({
   setBoardCount,
   boardLayout,
   setBoardLayout,
+  boardRows,
+  setBoardRows,
+  boardCols,
+  setBoardCols,
+  projectName,
+  setProjectName,
   uploadedImage,
   imagePreview,
   onStartPixelation
 }: BoardConfigurationProps) {
-  const [projectName, setProjectName] = useState('');
   const [adjustedImageData, setAdjustedImageData] = useState<string | null>(null);
   const { toast } = useToast();
   const createProjectMutation = useMutation({
-    mutationFn: async (data: { name: string; boardCount: number; boardLayout: string; image: File; adjustedImageData?: string }) => {
+    mutationFn: async (data: { name: string; boardCount: number; boardLayout: string; boardRows: number; boardCols: number; image: File; adjustedImageData?: string }) => {
       const formData = new FormData();
       formData.append('name', data.name);
       formData.append('boardCount', data.boardCount.toString());
       formData.append('boardLayout', data.boardLayout);
+      formData.append('boardRows', data.boardRows.toString());
+      formData.append('boardCols', data.boardCols.toString());
       
       // Use adjusted image if available, otherwise original
       if (data.adjustedImageData) {
@@ -91,25 +104,128 @@ export default function BoardConfiguration({
     }
   };
 
+  // Function to determine the correct layout value for the dropdown
+  const getCurrentLayoutValue = () => {
+    const currentLayout = `${boardRows}x${boardCols}`;
+    const presetLayouts = ['1x1', '2x2', '3x2', '3x3', '4x2'];
+    return presetLayouts.includes(currentLayout) ? currentLayout : 'custom';
+  };
+
+  const incrementRows = () => {
+    if (boardRows < 10) {
+      const newRows = boardRows + 1;
+      setBoardRows(newRows);
+      const newCount = newRows * boardCols;
+      setBoardCount(newCount);
+      const newLayout = `${boardCols}x${newRows}`;
+      setBoardLayout(newLayout);
+    }
+  };
+
+  const decrementRows = () => {
+    if (boardRows > 1) {
+      const newRows = boardRows - 1;
+      setBoardRows(newRows);
+      const newCount = newRows * boardCols;
+      setBoardCount(newCount);
+      const newLayout = `${boardCols}x${newRows}`;
+      setBoardLayout(newLayout);
+    }
+  };
+
+  const incrementCols = () => {
+    if (boardCols < 10) {
+      const newCols = boardCols + 1;
+      setBoardCols(newCols);
+      const newCount = boardRows * newCols;
+      setBoardCount(newCount);
+      const newLayout = `${newCols}x${boardRows}`;
+      setBoardLayout(newLayout);
+    }
+  };
+
+  const decrementCols = () => {
+    if (boardCols > 1) {
+      const newCols = boardCols - 1;
+      setBoardCols(newCols);
+      const newCount = boardRows * newCols;
+      setBoardCount(newCount);
+      const newLayout = `${newCols}x${boardRows}`;
+      setBoardLayout(newLayout);
+    }
+  };
+
   const updateLayoutForCount = (count: number) => {
     switch (count) {
-      case 1: setBoardLayout('1x1'); break;
-      case 4: setBoardLayout('2x2'); break;
-      case 6: setBoardLayout('3x2'); break;
-      case 8: setBoardLayout('4x2'); break;
-      case 9: setBoardLayout('3x3'); break;
-      default: setBoardLayout('custom'); break;
+      case 1: 
+        setBoardLayout('1x1'); 
+        setBoardRows(1); 
+        setBoardCols(1); 
+        break;
+      case 4: 
+        setBoardLayout('2x2'); 
+        setBoardRows(2); 
+        setBoardCols(2); 
+        break;
+      case 6: 
+        setBoardLayout('3x2'); 
+        setBoardRows(2); 
+        setBoardCols(3); 
+        break;
+      case 8: 
+        setBoardLayout('4x2'); 
+        setBoardRows(2); 
+        setBoardCols(4); 
+        break;
+      case 9: 
+        setBoardLayout('3x3'); 
+        setBoardRows(3); 
+        setBoardCols(3); 
+        break;
+      default: 
+        const sqrt = Math.ceil(Math.sqrt(count));
+        const rows = Math.ceil(count / sqrt);
+        const newLayout = `${sqrt}x${rows}`;
+        setBoardLayout(newLayout);
+        setBoardRows(rows);
+        setBoardCols(sqrt);
+        break;
     }
   };
 
   const handleLayoutChange = (value: string) => {
+    // Don't change anything if "custom" is selected - it's just a display state
+    if (value === 'custom') {
+      return;
+    }
+    
     setBoardLayout(value);
     switch (value) {
-      case '1x1': setBoardCount(1); break;
-      case '2x2': setBoardCount(4); break;
-      case '3x2': setBoardCount(6); break;
-      case '4x2': setBoardCount(8); break;
-      case '3x3': setBoardCount(9); break;
+      case '1x1': 
+        setBoardCount(1); 
+        setBoardRows(1); 
+        setBoardCols(1); 
+        break;
+      case '2x2': 
+        setBoardCount(4); 
+        setBoardRows(2); 
+        setBoardCols(2); 
+        break;
+      case '3x2': 
+        setBoardCount(6); 
+        setBoardRows(2); 
+        setBoardCols(3); 
+        break;
+      case '4x2': 
+        setBoardCount(8); 
+        setBoardRows(2); 
+        setBoardCols(4); 
+        break;
+      case '3x3': 
+        setBoardCount(9); 
+        setBoardRows(3); 
+        setBoardCols(3); 
+        break;
     }
   };
 
@@ -136,6 +252,8 @@ export default function BoardConfiguration({
       name: projectName,
       boardCount,
       boardLayout,
+      boardRows,
+      boardCols,
       image: uploadedImage,
       adjustedImageData: adjustedImageData || undefined
     });
@@ -148,6 +266,8 @@ export default function BoardConfiguration({
         imagePreview={imagePreview}
         boardCount={boardCount}
         boardLayout={boardLayout}
+        boardRows={boardRows}
+        boardCols={boardCols}
         onImageAdjusted={setAdjustedImageData}
       />
 
@@ -171,9 +291,112 @@ export default function BoardConfiguration({
               />
             </div>
 
+          {/* Unique Layout for First Image Set */}
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200 mb-6">
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
+              <h4 className="text-lg font-semibold text-purple-800">Board Grid Configuration</h4>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Rows Control */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100">
+                <Label className="block text-sm font-medium text-purple-700 mb-2">Rows</Label>
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={decrementRows}
+                    disabled={boardRows <= 1}
+                    className="border-purple-300 hover:bg-purple-50"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-2xl font-bold text-purple-800 min-w-[2rem] text-center">
+                    {boardRows}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={incrementRows}
+                    disabled={boardRows >= 10}
+                    className="border-purple-300 hover:bg-purple-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Columns Control */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100">
+                <Label className="block text-sm font-medium text-blue-700 mb-2">Columns</Label>
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={decrementCols}
+                    disabled={boardCols <= 1}
+                    className="border-blue-300 hover:bg-blue-50"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-2xl font-bold text-blue-800 min-w-[2rem] text-center">
+                    {boardCols}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={incrementCols}
+                    disabled={boardCols >= 10}
+                    className="border-blue-300 hover:bg-blue-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Total Boards Display */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <Label className="block text-sm font-medium text-gray-700 mb-2">Total Boards</Label>
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-gray-800">
+                    {boardCount}
+                  </span>
+                  <p className="text-sm text-gray-500 mt-1">{boardRows}×{boardCols} grid</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Layout:</span> {boardLayout} • 
+                <span className="font-medium"> Each board:</span> 32×32 tiles • 
+                <span className="font-medium"> Total tiles:</span> {boardCount * 1024}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Preset Layouts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Number of Boards</Label>
+              <Label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</Label>
+              <Select value={getCurrentLayoutValue()} onValueChange={handleLayoutChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1x1">1×1 Grid (1 board)</SelectItem>
+                  <SelectItem value="2x2">2×2 Grid (4 boards)</SelectItem>
+                  <SelectItem value="3x2">3×2 Grid (6 boards)</SelectItem>
+                  <SelectItem value="3x3">3×3 Grid (9 boards)</SelectItem>
+                  <SelectItem value="4x2">4×2 Grid (8 boards)</SelectItem>
+                  <SelectItem value="custom">Custom Layout ({boardCols}×{boardRows})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium text-gray-700 mb-2">Legacy Board Count</Label>
               <div className="flex items-center space-x-4">
                 <Button 
                   variant="outline" 
@@ -183,7 +406,7 @@ export default function BoardConfiguration({
                 >
                   <Minus className="w-4 h-4" />
                 </Button>
-                <span className="text-2xl font-semibold text-gray-900 min-w-[3rem] text-center">
+                <span className="text-xl font-semibold text-gray-900 min-w-[3rem] text-center">
                   {boardCount}
                 </span>
                 <Button 
@@ -195,24 +418,6 @@ export default function BoardConfiguration({
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Each board = 32×32 brick tiles</p>
-            </div>
-
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Board Layout</Label>
-              <Select value={boardLayout} onValueChange={handleLayoutChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1x1">1×1 Grid (1 board)</SelectItem>
-                  <SelectItem value="2x2">2×2 Grid (4 boards)</SelectItem>
-                  <SelectItem value="3x2">3×2 Grid (6 boards)</SelectItem>
-                  <SelectItem value="3x3">3×3 Grid (9 boards)</SelectItem>
-                  <SelectItem value="4x2">4×2 Grid (8 boards)</SelectItem>
-                  <SelectItem value="custom">Custom Layout</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
 

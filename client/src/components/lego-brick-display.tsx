@@ -5,11 +5,13 @@ interface BrickDisplayProps {
   result: PixelationResult;
   boardCount: number;
   boardLayout: string;
+  boardRows: number;
+  boardCols: number;
   onClick?: () => void;
   expandedMode?: boolean;
 }
 
-export default function LegoBrickDisplay({ result, boardCount, boardLayout, onClick, expandedMode = false }: BrickDisplayProps) {
+export default function LegoBrickDisplay({ result, boardCount, boardLayout, boardRows, boardCols, onClick, expandedMode = false }: BrickDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const drawBrickStud = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) => {
@@ -67,27 +69,9 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, onCl
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Calculate dimensions
-    let gridCols, gridRows;
-    switch (boardLayout) {
-      case '1x1':
-        gridCols = gridRows = 1;
-        break;
-      case '2x2':
-        gridCols = gridRows = 2;
-        break;
-      case '3x2':
-        gridCols = 3; gridRows = 2;
-        break;
-      case '3x3':
-        gridCols = gridRows = 3;
-        break;
-      case '4x2':
-        gridCols = 4; gridRows = 2;
-        break;
-      default:
-        gridCols = gridRows = Math.ceil(Math.sqrt(boardCount));
-    }
+    // Use the direct row and column values
+    const gridCols = boardCols;
+    const gridRows = boardRows;
 
     const totalPixelsWidth = gridCols * 32;
     const totalPixelsHeight = gridRows * 32;
@@ -139,7 +123,7 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, onCl
       ctx.fillText(board.id, boardStartX + 10, boardStartY + 25);
     });
 
-  }, [result, boardCount, boardLayout]);
+  }, [result, boardCount, boardLayout, boardRows, boardCols]);
 
   // Expanded mode - just the canvas for popups
   if (expandedMode) {
