@@ -145,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const { name, boardCount, boardLayout } = req.body;
+      const { name, boardCount, boardLayout, boardRows, boardCols } = req.body;
 
       if (!name || !boardCount || !boardLayout) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -157,6 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         originalImageUrl: req.file.path,
         boardCount: parseInt(boardCount, 10), // Ensure integer parsing
         boardLayout,
+        boardRows: boardRows ? parseInt(boardRows, 10) : undefined,
+        boardCols: boardCols ? parseInt(boardCols, 10) : undefined,
       });
 
       res.json(project);
@@ -177,23 +179,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const boardSize = 32; // Each board is 32x32 tiles
       let gridCols, gridRows;
 
-      switch (project.boardLayout) {
-        case "2x2":
-          gridCols = gridRows = 2;
-          break;
-        case "3x2":
-          gridCols = 3;
-          gridRows = 2;
-          break;
-        case "3x3":
-          gridCols = gridRows = 3;
-          break;
-        case "4x2":
-          gridCols = 4;
-          gridRows = 2;
-          break;
-        default:
-          gridCols = gridRows = Math.ceil(Math.sqrt(project.boardCount));
+      // Use stored boardRows and boardCols if available, otherwise fall back to layout parsing
+      if (project.boardRows && project.boardCols) {
+        gridRows = project.boardRows;
+        gridCols = project.boardCols;
+      } else {
+        // Fallback to old logic for backward compatibility
+        switch (project.boardLayout) {
+          case "2x2":
+            gridCols = gridRows = 2;
+            break;
+          case "3x2":
+            gridCols = 3;
+            gridRows = 2;
+            break;
+          case "3x3":
+            gridCols = gridRows = 3;
+            break;
+          case "4x2":
+            gridCols = 4;
+            gridRows = 2;
+            break;
+          default:
+            gridCols = gridRows = Math.ceil(Math.sqrt(project.boardCount));
+        }
       }
 
       const totalWidth = gridCols * boardSize;

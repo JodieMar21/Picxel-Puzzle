@@ -9,10 +9,12 @@ interface ImageEditorProps {
   imagePreview: string;
   boardCount: number;
   boardLayout: string;
+  boardRows: number;
+  boardCols: number;
   onImageAdjusted?: (adjustedImageData: string) => void;
 }
 
-export default function ImageEditor({ imagePreview, boardCount, boardLayout, onImageAdjusted }: ImageEditorProps) {
+export default function ImageEditor({ imagePreview, boardCount, boardLayout, boardRows, boardCols, onImageAdjusted }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -81,35 +83,16 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, onI
 
     // Draw grid overlay to show board boundaries
     drawGridOverlay(ctx, canvas.width, canvas.height);
-  }, [zoom, rotation, position, imageLoaded, boardLayout, boardCount, brightness, contrast, saturation, sharpness]);
+  }, [zoom, rotation, position, imageLoaded, boardLayout, boardCount, boardRows, boardCols, brightness, contrast, saturation, sharpness]);
 
   const drawGridOverlay = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
 
-    // Calculate grid dimensions based on board layout
-    let gridCols, gridRows;
-    
-    switch (boardLayout) {
-      case '1x1':
-        gridCols = gridRows = 1;
-        break;
-      case '2x2':
-        gridCols = gridRows = 2;
-        break;
-      case '3x2':
-        gridCols = 3; gridRows = 2;
-        break;
-      case '3x3':
-        gridCols = gridRows = 3;
-        break;
-      case '4x2':
-        gridCols = 4; gridRows = 2;
-        break;
-      default:
-        gridCols = gridRows = Math.ceil(Math.sqrt(boardCount));
-    }
+    // Use the direct row and column values
+    const gridCols = boardCols;
+    const gridRows = boardRows;
 
     const cellWidth = width / gridCols;
     const cellHeight = height / gridRows;

@@ -10,6 +10,8 @@ export const projects = pgTable("projects", {
   pixelatedImageUrl: text("pixelated_image_url"),
   boardCount: integer("board_count").notNull(),
   boardLayout: text("board_layout").notNull(),
+  boardRows: integer("board_rows"),
+  boardCols: integer("board_cols"),
   colorData: jsonb("color_data"),
   constructionGuideUrl: text("construction_guide_url"),
   pixelationResult: jsonb("pixelation_result"), // Store complete pixelation data
@@ -23,6 +25,8 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
   originalImageUrl: true,
   boardCount: true,
   boardLayout: true,
+  boardRows: true,
+  boardCols: true,
 });
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
