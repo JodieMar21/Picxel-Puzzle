@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Box, Settings, HelpCircle, FolderOpen } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,36 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState<PixelationResult | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLButtonElement>(null);
+
+  // Add these for Help dropdown
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpRef = useRef<HTMLButtonElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        settingsRef.current &&
+        !settingsRef.current.contains(event.target as Node) &&
+        helpRef.current &&
+        !helpRef.current.contains(event.target as Node)
+      ) {
+        setSettingsOpen(false);
+        setHelpOpen(false);
+      }
+      // If only one should close at a time, adjust logic accordingly
+    }
+    if (settingsOpen || helpOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [settingsOpen, helpOpen]);
 
   const handleImageUpload = (file: File, preview: string) => {
     setUploadedImage(file);
@@ -73,12 +103,67 @@ export default function Home() {
                   My Projects
                 </Button>
               </Link>
-              <button className="text-gray-500 hover:text-gray-700">
-                <HelpCircle className="w-5 h-5" />
-              </button>
-              <button className="text-gray-500 hover:text-gray-700">
-                <Settings className="w-5 h-5" />
-              </button>
+              <div className="relative">
+                <button
+                  ref={helpRef}
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setHelpOpen((open) => !open)}
+                  aria-label="Help"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </button>
+                {helpOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Need Help?</h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li>
+                        <span className="font-medium">How to use:</span> Upload an image, configure your board, and generate your mosaic guide.
+                      </li>
+                      <li>
+                        <span className="font-medium">Best results:</span> Use high-contrast, simple images. Square images work best.
+                      </li>
+                      <li>
+                        <span className="font-medium">Support:</span> For more help, visit our <a href="#" className="text-primary underline">documentation</a> or <a href="#" className="text-primary underline">contact us</a>.
+                      </li>
+                    </ul>
+                    <div className="mt-4 text-xs text-gray-400">
+                      Tip: You can always return to this help menu if you get stuck!
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  ref={settingsRef}
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setSettingsOpen((open) => !open)}
+                  aria-label="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+                {settingsOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Settings</h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li>
+                        <span className="font-medium">Theme:</span> Light (default)
+                      </li>
+                      <li>
+                        <span className="font-medium">Tile Size:</span> 32x32
+                      </li>
+                      <li>
+                        <span className="font-medium">Max Boards:</span> 12
+                      </li>
+                      <li>
+                        <span className="font-medium">Export Format:</span> PDF, PNG
+                      </li>
+                    </ul>
+                    <div className="mt-4 text-xs text-gray-400">
+                      More settings coming soon!
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -89,30 +174,47 @@ export default function Home() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold text-gray-900">Create your custom mosaic</h2>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Step</span>
-              <span className="bg-primary text-white px-2 py-1 rounded-full text-sm font-medium">
-                {currentStep}
-              </span>
-              <span className="text-sm text-gray-500">of 3</span>
+            <div className="relative">
+              <button
+                ref={settingsRef}
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setSettingsOpen((open) => !open)}
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              {settingsOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Settings</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li>
+                      <span className="font-medium">Theme:</span> Light (default)
+                    </li>
+                    <li>
+                      <span className="font-medium">Tile Size:</span> 32x32
+                    </li>
+                    <li>
+                      <span className="font-medium">Max Boards:</span> 12
+                    </li>
+                    <li>
+                      <span className="font-medium">Export Format:</span> PDF, PNG
+                    </li>
+                  </ul>
+                  <div className="mt-4 text-xs text-gray-400">
+                    More settings coming soon!
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          
-          {/* Progress Steps */}
           <div className="flex items-center space-x-4 mb-8">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-                    step.completed ? 'bg-success text-white' : 
-                    step.active ? 'bg-primary text-white' : 
-                    'bg-gray-300 text-gray-600'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${step.completed ? 'bg-success text-white' : step.active ? 'bg-primary text-white' : 'bg-gray-300 text-gray-600'}`}>
                     {step.number}
                   </div>
-                  <span className={`ml-2 text-sm font-medium ${
-                    step.active ? 'text-gray-900' : 'text-gray-500'
-                  }`}>
+                  <span className={`ml-2 text-sm font-medium ${step.active ? 'text-gray-900' : 'text-gray-500'}`}>
                     {step.title}
                   </span>
                 </div>
