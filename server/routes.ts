@@ -65,7 +65,7 @@ const BRICK_COLORS = [
   { name: "Balloon", hex: "#5FA5F5" },
   { name: "Diskette", hex: "#46D2E6" },
   { name: "Heart", hex: "#B9FFEB" },
-  { name: "Crosswords", hex: "#D88571" },
+  { name: "Cross Swords", hex: "#D88571" },
 ];
 
 function hexToRgb(hex: string): [number, number, number] {
