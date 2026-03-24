@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -31,6 +31,43 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
+
+export const licenseActivations = pgTable("license_activations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  licenseKeyHash: text("license_key_hash").notNull(),
+  deviceId: text("device_id").notNull(),
+  deviceName: text("device_name"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastValidatedAt: timestamp("last_validated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+export const licenseEvents = pgTable("license_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  licenseKeyHash: text("license_key_hash").notNull(),
+  deviceId: text("device_id"),
+  eventType: text("event_type").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const activateLicenseSchema = z.object({
+  licenseKey: z.string().min(8),
+  deviceId: z.string().min(8),
+  deviceName: z.string().min(1).max(120).optional(),
+});
+
+export const validateLicenseSchema = z.object({
+  entitlement: z.string().min(20),
+  deviceId: z.string().min(8),
+  forceRemote: z.boolean().optional(),
+});
+
+export const deactivateLicenseSchema = z.object({
+  entitlement: z.string().min(20),
+  deviceId: z.string().min(8),
+});
 
 // Frontend-only types for pixelation data
 export interface PixelationResult {

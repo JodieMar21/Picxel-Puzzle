@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import Projects from "@/pages/projects";
 import NotFound from "@/pages/not-found";
+import LicenseGate from "@/features/license/LicenseGate";
 
 function Router() {
   return (
@@ -22,7 +23,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <LicenseGate>
+          <Router />
+        </LicenseGate>
       </TooltipProvider>
     </QueryClientProvider>
   );

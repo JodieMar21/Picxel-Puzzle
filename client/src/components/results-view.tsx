@@ -11,6 +11,7 @@ import LegoBrickDisplay from "./lego-brick-display";
 import PixelEditor from "./pixel-editor";
 import type { PixelationResult } from "@shared/schema";
 import { calculateEstimatedBuildTime, getDifficultyLevel, downloadImageAsFile, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
+import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 
 
 interface ResultsViewProps {
@@ -38,7 +39,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
       
       const response = await fetch(`/api/projects/${projectId}/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCurrentLicenseHeaders() },
         body: JSON.stringify({
           name: `Saved Project ${new Date().toLocaleDateString()}`,
           pixelationResult: editedResults
