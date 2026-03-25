@@ -9,6 +9,7 @@ files:
   - package.json
 asarUnpack:
   - dist/**/*
+  - node_modules/keytar/**/*
 mac:
   target:
     - dmg

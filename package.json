@@ -2,7 +2,7 @@
   "name": "rest-express",
   "type": "module",
   "version": "1.0.0",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
@@ -11,10 +11,10 @@
     "dev:electron": "cross-env ELECTRON_RENDERER_URL=http://localhost:5173 ELECTRON_IS_DEV=1 tsx electron/main.ts",
     "dev:desktop": "concurrently -k \"npm run dev:web\" \"npm run dev:renderer\" \"wait-on http://localhost:5000 http://localhost:5173 && npm run dev:electron\"",
     "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "build:electron": "npx esbuild electron/main.ts electron/preload.ts --platform=node --bundle --format=esm --outdir=dist-electron",
+    "build:electron": "npx esbuild electron/main.ts electron/preload.ts --platform=node --bundle --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:keytar --external:electron",
     "build:desktop": "npm run build && npm run build:electron && electron-builder",
     "start": "NODE_ENV=production node dist/index.js",
-    "start:desktop": "cross-env ELECTRON_IS_DEV=0 electron dist-electron/main.js",
+    "start:desktop": "cross-env ELECTRON_IS_DEV=0 electron dist-electron/main.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },

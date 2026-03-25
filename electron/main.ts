@@ -17,9 +17,15 @@ function getServerEntryPath(): string {
 }
 
 function getPreloadPath(): string {
-  const localPath = join(process.cwd(), "dist-electron", "preload.js");
-  const bundledPath = join(process.resourcesPath, "app.asar.unpacked", "dist-electron", "preload.js");
-  return existsSync(localPath) ? localPath : bundledPath;
+  const localPathCjs = join(process.cwd(), "dist-electron", "preload.cjs");
+  const localPathJs = join(process.cwd(), "dist-electron", "preload.js");
+  const bundledPathCjs = join(process.resourcesPath, "app.asar.unpacked", "dist-electron", "preload.cjs");
+  const bundledPathJs = join(process.resourcesPath, "app.asar.unpacked", "dist-electron", "preload.js");
+
+  if (existsSync(localPathCjs)) return localPathCjs;
+  if (existsSync(localPathJs)) return localPathJs;
+  if (existsSync(bundledPathCjs)) return bundledPathCjs;
+  return bundledPathJs;
 }
 
 function startLocalServer(port: number): void {
@@ -33,6 +39,21 @@ function startLocalServer(port: number): void {
     },
     stdio: "inherit",
   });
+}
+
+async function waitForServerReady(port: number, timeoutMs = 10000): Promise<boolean> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+      if (res.ok) return true;
+    } catch (_error) {
+      // Server might still be starting; retry.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  return false;
 }
 
 function createWindow(targetUrl: string): void {
@@ -50,13 +71,20 @@ function createWindow(targetUrl: string): void {
     },
   });
 
+  appWindow.webContents.on("did-finish-load", () => {
+    console.log(`[desktop] renderer loaded: ${targetUrl}`);
+  });
+  appWindow.webContents.on("did-fail-load", (_event, errorCode, errorDesc) => {
+    console.error(`[desktop] renderer failed: ${errorCode} ${errorDesc} url=${targetUrl}`);
+  });
+
   appWindow.loadURL(targetUrl);
   appWindow.on("closed", () => {
     appWindow = null;
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (ELECTRON_RENDERER_URL) {
     createWindow(ELECTRON_RENDERER_URL);
     return;
@@ -64,6 +92,10 @@ app.whenReady().then(() => {
 
   const port = Number(process.env.PICXEL_DESKTOP_PORT || DEFAULT_SERVER_PORT);
   startLocalServer(port);
+
+  // Avoid racing the local Express server; BrowserWindow may exit if loadURL fails early.
+  await waitForServerReady(port);
+
   createWindow(`http://127.0.0.1:${port}`);
 });
 
