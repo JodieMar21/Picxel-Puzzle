@@ -35,6 +35,7 @@ async function getKeytar() {
 }
 var desktopApi = {
   getRuntime: async () => import_electron.ipcRenderer.invoke("app:get-runtime"),
+  openExternal: (url) => import_electron.ipcRenderer.invoke("shell:open-external", url),
   secureStore: {
     get: async () => {
       const keytar = await getKeytar();

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
 import { spawn, type ChildProcess } from "child_process";
@@ -122,3 +122,7 @@ ipcMain.handle("app:get-runtime", () => ({
   isDesktop: true,
   isDev,
 }));
+
+ipcMain.handle("shell:open-external", (_event, url: string) => {
+  shell.openExternal(url);
+});

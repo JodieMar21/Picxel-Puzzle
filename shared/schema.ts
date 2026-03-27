@@ -32,6 +32,19 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
+export const licenses = pgTable("licenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  licenseKey: text("license_key").notNull().unique(),
+  licenseKeyHash: text("license_key_hash").notNull().unique(),
+  stripeSessionId: text("stripe_session_id").notNull().unique(),
+  customerEmail: text("customer_email").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  maxDevices: integer("max_devices").notNull().default(2),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export type License = typeof licenses.$inferSelect;
+
 export const licenseActivations = pgTable("license_activations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   licenseKeyHash: text("license_key_hash").notNull(),
