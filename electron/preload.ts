@@ -18,6 +18,7 @@ async function getKeytar() {
 
 const desktopApi = {
   getRuntime: async (): Promise<RuntimeInfo> => ipcRenderer.invoke("app:get-runtime"),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke("shell:open-external", url),
   secureStore: {
     get: async (): Promise<string | null> => {
       const keytar = await getKeytar();

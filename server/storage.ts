@@ -1,4 +1,4 @@
-import { licenseActivations, licenseEvents, projects, type Project, type InsertProject } from "@shared/schema";
+import { licenseActivations, licenseEvents, licenses, projects, type License, type Project, type InsertProject } from "@shared/schema";
 import { db } from "./db";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -7,6 +7,9 @@ export interface IStorage {
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined>;
   getAllProjects(): Promise<Project[]>;
+  createLicense(input: { licenseKey: string; licenseKeyHash: string; stripeSessionId: string; customerEmail: string }): Promise<License>;
+  getLicenseByHash(licenseKeyHash: string): Promise<License | undefined>;
+  getLicenseByStripeSession(stripeSessionId: string): Promise<License | undefined>;
   getLicenseActivationByDevice(licenseKeyHash: string, deviceId: string): Promise<typeof licenseActivations.$inferSelect | undefined>;
   getActiveLicenseActivations(licenseKeyHash: string): Promise<(typeof licenseActivations.$inferSelect)[]>;
   upsertLicenseActivation(input: {
@@ -49,6 +52,24 @@ export class DatabaseStorage implements IStorage {
 
   async getAllProjects(): Promise<Project[]> {
     return await db.select().from(projects).orderBy(desc(projects.updatedAt));
+  }
+
+  async createLicense(input: { licenseKey: string; licenseKeyHash: string; stripeSessionId: string; customerEmail: string }): Promise<License> {
+    const [license] = await db
+      .insert(licenses)
+      .values(input)
+      .returning();
+    return license;
+  }
+
+  async getLicenseByHash(licenseKeyHash: string): Promise<License | undefined> {
+    const [license] = await db.select().from(licenses).where(eq(licenses.licenseKeyHash, licenseKeyHash));
+    return license;
+  }
+
+  async getLicenseByStripeSession(stripeSessionId: string): Promise<License | undefined> {
+    const [license] = await db.select().from(licenses).where(eq(licenses.stripeSessionId, stripeSessionId));
+    return license;
   }
 
   async getLicenseActivationByDevice(licenseKeyHash: string, deviceId: string): Promise<typeof licenseActivations.$inferSelect | undefined> {

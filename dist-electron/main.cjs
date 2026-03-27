@@ -104,3 +104,6 @@ import_electron.ipcMain.handle("app:get-runtime", () => ({
   isDesktop: true,
   isDev
 }));
+import_electron.ipcMain.handle("shell:open-external", (_event, url) => {
+  import_electron.shell.openExternal(url);
+});

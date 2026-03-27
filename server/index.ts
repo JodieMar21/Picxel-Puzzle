@@ -2,9 +2,15 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { hashLicenseKey } from "./services/licenseService";
 
 const app = express();
-app.use(express.json());
+app.use((req, res, next) => {
+  // Stripe webhook must receive the untouched raw payload for signature checks.
+  if (req.path === "/api/webhooks/stripe") return next();
+  return express.json()(req, res, next);
+});
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
@@ -37,7 +43,30 @@ app.use((req, res, next) => {
   next();
 });
 
+async function seedDevLicense(): Promise<void> {
+  const devKey = process.env.DEV_LICENSE_KEY;
+  if (!devKey) return;
+
+  const keyHash = hashLicenseKey(devKey);
+  const existing = await storage.getLicenseByHash(keyHash);
+  if (existing) {
+    log(`[dev] Dev license already in DB — use key: ${devKey}`);
+    return;
+  }
+
+  await storage.createLicense({
+    licenseKey: devKey,
+    licenseKeyHash: keyHash,
+    stripeSessionId: `dev-seed-${Date.now()}`,
+    customerEmail: "dev@local.test",
+  });
+
+  log(`[dev] Dev license seeded — activate the app with: ${devKey}`);
+}
+
 (async () => {
+  await seedDevLicense();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

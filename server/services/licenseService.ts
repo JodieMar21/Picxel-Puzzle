@@ -8,18 +8,11 @@ type EntitlementPayload = {
   nextCheckAt: string;
 };
 
-type ValidateRemoteResult = {
-  valid: boolean;
-  reason?: string;
-  lemonResponse?: unknown;
-};
-
-const LEMON_VALIDATE_URL = process.env.LEMON_SQUEEZY_VALIDATE_URL ?? "https://api.lemonsqueezy.com/v1/licenses/validate";
 const SIGNING_SECRET = process.env.LICENSE_SIGNING_SECRET ?? "dev-only-change-me";
 const OFFLINE_GRACE_DAYS = Number(process.env.LICENSE_OFFLINE_DAYS ?? "7");
 const MAX_DEVICES = Number(process.env.LICENSE_MAX_DEVICES ?? "2");
 
-function hashLicenseKey(licenseKey: string): string {
+export function hashLicenseKey(licenseKey: string): string {
   return crypto.createHash("sha256").update(licenseKey).digest("hex");
 }
 
@@ -47,54 +40,15 @@ function verifyEntitlement(entitlement: string): EntitlementPayload {
   return payload;
 }
 
-async function validateWithLemonSqueezy(licenseKey: string, instanceName: string): Promise<ValidateRemoteResult> {
-  const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
-  if (!apiKey) {
-    return { valid: true, reason: "LEMON_SQUEEZY_API_KEY missing; running permissive validation." };
+async function validateWithDatabase(licenseKeyHash: string): Promise<{ valid: boolean; reason?: string; maxDevices?: number }> {
+  const license = await storage.getLicenseByHash(licenseKeyHash);
+  if (!license) {
+    return { valid: false, reason: "License key not found. Please check your key and try again." };
   }
-
-  try {
-    const response = await fetch(LEMON_VALIDATE_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        license_key: licenseKey,
-        instance_name: instanceName,
-      }),
-    });
-
-    const responseText = await response.text();
-    let parsed: any = null;
-    try {
-      parsed = responseText ? JSON.parse(responseText) : null;
-    } catch (_error) {
-      parsed = { raw: responseText };
-    }
-
-    const bodyValid =
-      parsed?.valid === true ||
-      parsed?.license_key?.status === "active" ||
-      parsed?.meta?.valid === true;
-
-    if (!response.ok || !bodyValid) {
-      return {
-        valid: false,
-        reason: parsed?.error ?? parsed?.message ?? "License is invalid.",
-        lemonResponse: parsed,
-      };
-    }
-
-    return { valid: true, lemonResponse: parsed };
-  } catch (error) {
-    return {
-      valid: false,
-      reason: error instanceof Error ? error.message : "License server unreachable.",
-    };
+  if (!license.isActive) {
+    return { valid: false, reason: "This license key has been deactivated." };
   }
+  return { valid: true, maxDevices: license.maxDevices };
 }
 
 function nextValidationDate(now = new Date()): string {
@@ -106,15 +60,16 @@ export const licenseService = {
 
   async activate(input: { licenseKey: string; deviceId: string; deviceName?: string }) {
     const keyHash = hashLicenseKey(input.licenseKey.trim());
-    const remoteResult = await validateWithLemonSqueezy(input.licenseKey.trim(), input.deviceName ?? input.deviceId);
-    if (!remoteResult.valid) {
-      throw new Error(remoteResult.reason ?? "License validation failed.");
+    const dbResult = await validateWithDatabase(keyHash);
+    if (!dbResult.valid) {
+      throw new Error(dbResult.reason ?? "License validation failed.");
     }
 
+    const deviceLimit = dbResult.maxDevices ?? MAX_DEVICES;
     const activeDevices = await storage.getActiveLicenseActivations(keyHash);
     const existingDevice = activeDevices.find((entry) => entry.deviceId === input.deviceId);
-    if (!existingDevice && activeDevices.length >= MAX_DEVICES) {
-      throw new Error(`Device limit reached (${MAX_DEVICES}). Deactivate another device first.`);
+    if (!existingDevice && activeDevices.length >= deviceLimit) {
+      throw new Error(`Device limit reached (${deviceLimit}). Deactivate another device first.`);
     }
 
     await storage.upsertLicenseActivation({
@@ -127,7 +82,7 @@ export const licenseService = {
       licenseKeyHash: keyHash,
       deviceId: input.deviceId,
       eventType: "activated",
-      metadata: { deviceName: input.deviceName, maxDevices: MAX_DEVICES },
+      metadata: { deviceName: input.deviceName, maxDevices: deviceLimit },
     });
 
     const now = new Date();
@@ -141,7 +96,7 @@ export const licenseService = {
     return {
       entitlement: createEntitlement(payload),
       nextCheckAt: payload.nextCheckAt,
-      maxDevices: MAX_DEVICES,
+      maxDevices: deviceLimit,
       offlineGraceDays: OFFLINE_GRACE_DAYS,
     };
   },

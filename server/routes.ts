@@ -1,4 +1,5 @@
 import type { Express, Request } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { activateLicenseSchema, deactivateLicenseSchema, insertProjectSchema, validateLicenseSchema } from "@shared/schema";
@@ -7,6 +8,7 @@ import sharp from "sharp";
 import path from "path";
 import fs from "fs";
 import { licenseService } from "./services/licenseService";
+import { createCheckoutSession, handleStripeWebhook, getLicenseKeyForSession } from "./services/stripeService";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -171,9 +173,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe checkout session creation
+  app.post("/api/checkout", async (req, res) => {
+    try {
+      const priceId = req.body.priceId ?? process.env.STRIPE_PRICE_ID;
+      if (!priceId) {
+        return res.status(400).json({ message: "No Stripe price ID configured." });
+      }
+
+      const appBaseUrl = process.env.APP_BASE_URL ?? `http://localhost:${process.env.PORT ?? 5000}`;
+      const result = await createCheckoutSession({
+        priceId,
+        successUrl: `${appBaseUrl}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appBaseUrl}/`,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Checkout error:", error);
+      res.status(500).json({ message: error.message ?? "Failed to create checkout session." });
+    }
+  });
+
+  // Stripe webhook — must use raw body, registered before express.json() processes it
+  app.post(
+    "/api/webhooks/stripe",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      const signature = req.headers["stripe-signature"];
+      console.log(
+        `[stripe:webhook] Request received signaturePresent=${typeof signature === "string"} bodyIsBuffer=${Buffer.isBuffer(req.body)}`,
+      );
+      if (!signature || typeof signature !== "string") {
+        return res.status(400).json({ message: "Missing stripe-signature header." });
+      }
+
+      try {
+        await handleStripeWebhook(req.body as Buffer, signature);
+        res.json({ received: true });
+      } catch (error: any) {
+        console.error("[stripe:webhook] Webhook error:", error);
+        res.status(400).json({ message: error.message ?? "Webhook handling failed." });
+      }
+    }
+  );
+
+  // License key lookup by Stripe session (for purchase success page)
+  app.get("/api/license/lookup", async (req, res) => {
+    const sessionId = req.query.session_id;
+    if (!sessionId || typeof sessionId !== "string") {
+      return res.status(400).json({ message: "Missing session_id query parameter." });
+    }
+
+    try {
+      const licenseKey = await getLicenseKeyForSession(sessionId);
+      if (!licenseKey) {
+        return res.status(404).json({ message: "License not found for this session. It may still be processing — please check your email." });
+      }
+      res.json({ licenseKey });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message ?? "Failed to look up license." });
+    }
+  });
+
   app.use("/api", (req, res, next) => {
     if (req.path === "/health") return next();
     if (req.path.startsWith("/license/")) return next();
+    if (req.path === "/checkout") return next();
+    if (req.path.startsWith("/webhooks/")) return next();
 
     const entitlement = req.header("x-license-entitlement");
     const deviceId = req.header("x-device-id");
