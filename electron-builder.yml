@@ -18,6 +18,11 @@ mac:
 win:
   target:
     - nsis
+publish:
+  provider: github
+  owner: JodieMar21
+  repo: picxel-puzzle
+  releaseType: release
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
