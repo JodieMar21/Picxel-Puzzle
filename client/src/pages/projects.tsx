@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, getCurrentLicenseHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { generateVisualColorKey } from "@/lib/pixelation";
 import type { Project, PixelationResult } from "@shared/schema";
@@ -28,7 +28,11 @@ export default function Projects() {
 
   const deleteProjectMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+      const headers = getCurrentLicenseHeaders();
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+        headers,
+      });
       if (!response.ok) throw new Error('Delete failed');
       return response.json();
     },

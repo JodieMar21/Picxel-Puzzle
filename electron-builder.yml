@@ -1,0 +1,24 @@
+appId: com.picxel.desktop
+productName: Picxel
+directories:
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - node_modules/**/*
+  - package.json
+asarUnpack:
+  - dist/**/*
+  - node_modules/keytar/**/*
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.graphics-design
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"

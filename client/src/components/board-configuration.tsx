@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 import ImageEditor from "@/components/image-editor";
 
 interface BoardConfigurationProps {
@@ -63,6 +63,9 @@ export default function BoardConfiguration({
 
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: {
+          ...getCurrentLicenseHeaders(),
+        },
         body: formData,
       });
 

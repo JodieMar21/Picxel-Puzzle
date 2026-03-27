@@ -1,11 +1,12 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema } from "@shared/schema";
+import { activateLicenseSchema, deactivateLicenseSchema, insertProjectSchema, validateLicenseSchema } from "@shared/schema";
 import multer, { FileFilterCallback } from "multer";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
+import { licenseService } from "./services/licenseService";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -136,6 +137,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     fs.mkdirSync("uploads");
   }
 
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true });
+  });
+
+  app.post("/api/license/activate", async (req, res) => {
+    try {
+      const payload = activateLicenseSchema.parse(req.body);
+      const result = await licenseService.activate(payload);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "License activation failed." });
+    }
+  });
+
+  app.post("/api/license/validate", async (req, res) => {
+    try {
+      const payload = validateLicenseSchema.parse(req.body);
+      const result = await licenseService.validate(payload);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "License validation failed." });
+    }
+  });
+
+  app.post("/api/license/deactivate", async (req, res) => {
+    try {
+      const payload = deactivateLicenseSchema.parse(req.body);
+      await licenseService.deactivate(payload);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "License deactivation failed." });
+    }
+  });
+
+  app.use("/api", (req, res, next) => {
+    if (req.path === "/health") return next();
+    if (req.path.startsWith("/license/")) return next();
+
+    const entitlement = req.header("x-license-entitlement");
+    const deviceId = req.header("x-device-id");
+    if (!entitlement || !deviceId) {
+      return res.status(401).json({ message: "License entitlement required." });
+    }
+
+    try {
+      const payload = licenseService.verifyEntitlement(entitlement);
+      if (payload.deviceId !== deviceId) {
+        return res.status(401).json({ message: "License entitlement does not match this device." });
+      }
+      if (new Date(payload.nextCheckAt) <= new Date()) {
+        return res.status(428).json({ message: "License revalidation required." });
+      }
+      next();
+    } catch (error: any) {
+      return res.status(401).json({ message: error.message ?? "Invalid license entitlement." });
+    }
+  });
+
   // Upload image endpoint
   app.post("/api/upload", upload.single("image"), async (req: MulterRequest, res) => {
     console.log("Middleware reached, req.file:", req.file);
@@ -162,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(project);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error); // Log the full error for debugging
       res.status(500).json({ message: "Upload failed", error: error.message }); // Return error details
     }
@@ -322,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(pixelationResult);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Processing error:", error);
       await storage.updateProject(req.params.id, { status: "failed" });
       res.status(500).json({ message: "Processing failed", error: error.message });
@@ -334,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projects = await storage.getAllProjects();
       res.json(projects);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching projects:", error);
       res.status(500).json({ message: "Failed to fetch projects", error: error.message });
     }
@@ -348,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
       res.json(project);
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ message: "Failed to get project", error: error.message });
     }
   });
@@ -373,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updatedProject);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving project:", error);
       res.status(500).json({ message: "Failed to save project", error: error.message });
     }
@@ -398,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateProject(req.params.id, { status: "deleted" });
 
       res.json({ message: "Project deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting project:", error);
       res.status(500).json({ message: "Failed to delete project", error: error.message });
     }

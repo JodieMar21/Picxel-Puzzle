@@ -1,5 +1,16 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+type LicenseHeadersProvider = () => Record<string, string>;
+let getLicenseHeaders: LicenseHeadersProvider = () => ({});
+
+export function configureLicenseHeaders(provider: LicenseHeadersProvider) {
+  getLicenseHeaders = provider;
+}
+
+export function getCurrentLicenseHeaders(): Record<string, string> {
+  return getLicenseHeaders();
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -14,7 +25,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...getLicenseHeaders(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -30,6 +44,9 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
+      headers: {
+        ...getLicenseHeaders(),
+      },
       credentials: "include",
     });
 
