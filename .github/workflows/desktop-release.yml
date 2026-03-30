@@ -18,13 +18,10 @@ on:
           - "true"
 
 jobs:
-  build:
-    name: Build desktop app (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
+  # Split platforms so `release` can run when only one OS succeeds (partial release).
+  build_windows:
+    name: Build desktop app (windows-latest)
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -57,17 +54,58 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: picxel-${{ matrix.os }}
+          name: picxel-windows-latest
+          path: release/**
+
+  build_macos:
+    name: Build desktop app (macos-latest)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build desktop packages
+        run: npm run build:desktop
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: picxel-macos-latest
           path: release/**
 
   release:
     name: Publish GitHub Release
-    needs: build
+    needs: [build_windows, build_macos]
     runs-on: ubuntu-latest
-    # Run for version tags, or manual dispatch when publish_release=true.
-    # Require successful build matrix before publishing.
+    # Tag or manual publish; at least one platform must succeed (partial release OK).
     if: |
-      needs.build.result == 'success' &&
+      always() &&
+      (
+        needs.build_windows.result == 'success' ||
+        needs.build_macos.result == 'success'
+      ) &&
       (
         startsWith(github.ref, 'refs/tags/v') ||
         (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
@@ -75,16 +113,33 @@ jobs:
 
     steps:
       - name: Download Windows artifacts
+        if: needs.build_windows.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: picxel-windows-latest
           path: release/windows
 
       - name: Download macOS artifacts
+        if: needs.build_macos.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: picxel-macos-latest
           path: release/macos
+
+      - name: Collect release files
+        id: files
+        run: |
+          mkdir -p release
+          mapfile -t paths < <(find release -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' \) 2>/dev/null | sort -u)
+          if [ ${#paths[@]} -eq 0 ]; then
+            echo "No .exe/.dmg/.zip artifacts found under release/"
+            exit 1
+          fi
+          {
+            echo 'list<<EOF'
+            printf '%s\n' "${paths[@]}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -93,9 +148,6 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: |
-            release/windows/**/*.exe
-            release/macos/**/*.dmg
-            release/macos/**/*.zip
+          files: ${{ steps.files.outputs.list }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
