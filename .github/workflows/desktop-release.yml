@@ -7,6 +7,15 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish GitHub Release after build"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   build:
@@ -55,8 +64,14 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    # Only run when triggered by a version tag push, not workflow_dispatch
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Run for version tags, or manual dispatch when publish_release=true.
+    # Require successful build matrix before publishing.
+    if: |
+      needs.build.result == 'success' &&
+      (
+        startsWith(github.ref, 'refs/tags/v') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
+      )
 
     steps:
       - name: Download Windows artifacts
