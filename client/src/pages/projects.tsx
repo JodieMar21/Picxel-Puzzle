@@ -335,7 +335,7 @@ export default function Projects() {
                         size="sm"
                         onClick={async () => {
                           const { saveImageWithDialog } = await import('@/lib/file-saver');
-                          const filename = index === 0 ? 'picxel-project-overview.png' : `picxel-board-${index}-guide.png`;
+                          const filename = index === 0 ? 'fractix-project-overview.png' : `fractix-board-${index}-guide.png`;
                           await saveImageWithDialog(guide, filename);
                         }}
                       >
@@ -348,7 +348,7 @@ export default function Projects() {
                         onClick={() => {
                           const printWindow = window.open('', '_blank');
                           if (printWindow) {
-                            const title = index === 0 ? 'Picxel Project Overview' : `Picxel Board ${index} Guide`;
+                            const title = index === 0 ? 'Fractix Project Overview' : `Fractix Board ${index} Guide`;
                             printWindow.document.write(`
                               <html>
                                 <head>

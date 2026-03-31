@@ -91,7 +91,7 @@ export default function PurchaseSuccess() {
               <CardHeader>
                 <CardTitle className="text-base">Your License Key</CardTitle>
                 <CardDescription>
-                  Enter this key when Picxel prompts you on first launch.
+                  Enter this key when Fractix prompts you on first launch.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -121,7 +121,7 @@ export default function PurchaseSuccess() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Download Picxel</CardTitle>
+                <CardTitle className="text-base">Download Fractix</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1">
@@ -142,7 +142,7 @@ export default function PurchaseSuccess() {
             <div className="text-center text-sm text-slate-500 space-y-1">
               <p>How to activate:</p>
               <ol className="text-left list-decimal list-inside space-y-1">
-                <li>Download and install Picxel above.</li>
+                <li>Download and install Fractix above.</li>
                 <li>Open the app — a license prompt will appear.</li>
                 <li>Paste your key and click <strong>"Activate and continue"</strong>.</li>
               </ol>

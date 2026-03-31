@@ -6,7 +6,7 @@ const form = new FormData();
 form.append('name', 'soda pop');
 form.append('boardCount', '4');
 form.append('boardLayout', '2x2');
-form.append('image', fs.createReadStream('C:/Users/New/Desktop/PICXEL ONLINE/PHOTOS/Soda pop.jpeg')); // Updated path
+form.append('image', fs.createReadStream('C:/Users/New/Desktop/FRACTIX ONLINE/PHOTOS/Soda pop.jpeg')); // Updated path
 
 fetch('http://localhost:5000/api/upload', {
   method: 'POST',

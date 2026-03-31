@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-const SERVICE_NAME = "picxel-license";
+const SERVICE_NAME = "fractix-license";
 const ACCOUNT_NAME = "entitlement";
 
 type RuntimeInfo = {

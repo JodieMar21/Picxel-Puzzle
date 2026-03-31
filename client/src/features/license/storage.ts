@@ -1,6 +1,6 @@
 import type { LicenseEntitlement } from "./types";
 
-const FALLBACK_KEY = "picxel.license.entitlement";
+const FALLBACK_KEY = "fractix.license.entitlement";
 
 export async function getStoredEntitlement(): Promise<LicenseEntitlement | null> {
   const secureValue = await window.desktopApi?.secureStore.get();

@@ -34,7 +34,7 @@ function startLocalServer(port: number): void {
     env: {
       ...process.env,
       PORT: String(port),
-      PICXEL_DESKTOP: "1",
+      FRACTIX_DESKTOP: "1",
       NODE_ENV: "production",
     },
     stdio: "inherit",
@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
     return;
   }
 
-  const port = Number(process.env.PICXEL_DESKTOP_PORT || DEFAULT_SERVER_PORT);
+  const port = Number(process.env.FRACTIX_DESKTOP_PORT || DEFAULT_SERVER_PORT);
   startLocalServer(port);
 
   // Avoid racing the local Express server; BrowserWindow may exit if loadURL fails early.

@@ -92,7 +92,7 @@ export default function Home() {
                 <Box className="text-white w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Picxel Studio</h1>
+                <h1 className="text-xl font-semibold text-gray-900">Fractix Studio</h1>
                 <p className="text-sm text-gray-500">Professional Image to Brick Converter</p>
               </div>
             </div>
@@ -324,7 +324,7 @@ export default function Home() {
       <footer className="bg-white border-t border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">© 2024 Picxel Studio. Professional mosaic creation tool.</p>
+            <p className="text-sm text-gray-500">© 2024 Fractix Studio. Professional mosaic creation tool.</p>
             <div className="flex items-center space-x-6 text-sm text-gray-500">
               <a href="#" className="hover:text-gray-700">Support</a>
               <a href="#" className="hover:text-gray-700">Documentation</a>

@@ -75,7 +75,7 @@ function startLocalServer(port) {
     env: {
       ...process.env,
       PORT: String(port),
-      PICXEL_DESKTOP: "1",
+      FRACTIX_DESKTOP: "1",
       NODE_ENV: "production"
     },
     stdio: "inherit"
@@ -105,7 +105,7 @@ import_electron.app.whenReady().then(() => {
     createWindow(ELECTRON_RENDERER_URL);
     return;
   }
-  const port = Number(process.env.PICXEL_DESKTOP_PORT || DEFAULT_SERVER_PORT);
+  const port = Number(process.env.FRACTIX_DESKTOP_PORT || DEFAULT_SERVER_PORT);
   startLocalServer(port);
   createWindow(`http://127.0.0.1:${port}`);
 });

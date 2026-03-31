@@ -51,7 +51,7 @@ var require_electron = __commonJS({
 
 // electron/preload.ts
 var import_electron = __toESM(require_electron(), 1);
-var SERVICE_NAME = "picxel-license";
+var SERVICE_NAME = "fractix-license";
 var ACCOUNT_NAME = "entitlement";
 async function getKeytar() {
   try {

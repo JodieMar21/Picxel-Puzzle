@@ -24,7 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // electron/preload.ts
 var import_electron = require("electron");
-var SERVICE_NAME = "picxel-license";
+var SERVICE_NAME = "fractix-license";
 var ACCOUNT_NAME = "entitlement";
 async function getKeytar() {
   try {

@@ -110,13 +110,13 @@ export async function saveImageWithDialog(
 export async function saveProjectWithDialog(projectData: any): Promise<boolean> {
   try {
     const jsonString = JSON.stringify(projectData, null, 2);
-    const fileName = `picxel-project-${new Date().toISOString().split('T')[0]}.json`;
+    const fileName = `fractix-project-${new Date().toISOString().split('T')[0]}.json`;
     
     const success = await saveFileWithDialog(jsonString, {
       suggestedName: fileName,
       fileExtension: '.json',
       mimeType: 'application/json',
-      description: 'Picxel Project Files'
+      description: 'Fractix Project Files'
     });
     
     if (success) {

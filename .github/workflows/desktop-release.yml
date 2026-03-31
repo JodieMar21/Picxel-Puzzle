@@ -60,7 +60,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: picxel-windows-latest
+          name: fractix-windows-latest
           path: release/**
 
   build_macos:
@@ -103,7 +103,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: picxel-macos-latest
+          name: fractix-macos-latest
           path: release/**
 
   release:
@@ -127,14 +127,14 @@ jobs:
         if: needs.build_windows.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: picxel-windows-latest
+          name: fractix-windows-latest
           path: release/windows
 
       - name: Download macOS artifacts
         if: needs.build_macos.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: picxel-macos-latest
+          name: fractix-macos-latest
           path: release/macos
 
       - name: Debug release folder contents
@@ -177,7 +177,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Picxel ${{ github.ref_name }}"
+          name: "Fractix ${{ github.ref_name }}"
           draft: false
           prerelease: false
           generate_release_notes: true

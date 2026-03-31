@@ -18,7 +18,7 @@ function generateLicenseKey(): string {
   const segments = Array.from({ length: 4 }, () =>
     crypto.randomBytes(3).toString("hex").toUpperCase()
   );
-  return `PICXEL-${segments.join("-")}`;
+  return `FRACTIX-${segments.join("-")}`;
 }
 
 async function issueLicenseForSession(input: {

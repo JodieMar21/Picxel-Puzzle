@@ -171,7 +171,7 @@ export default function LicenseGate({ children }: PropsWithChildren) {
             <div className="flex justify-center mb-3">
               <ShieldCheck className="h-10 w-10 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl">Activate Picxel</CardTitle>
+            <CardTitle className="text-2xl">Activate Fractix</CardTitle>
             <CardDescription>Enter your license key to get started</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 pt-2">
@@ -182,7 +182,7 @@ export default function LicenseGate({ children }: PropsWithChildren) {
                   id="licenseKey"
                   value={licenseKey}
                   onChange={(event) => setLicenseKey(event.target.value)}
-                  placeholder="PICXEL-XXXX-XXXX-XXXX-XXXX"
+                  placeholder="FRACTIX-XXXX-XXXX-XXXX-XXXX"
                   className="font-mono tracking-wide"
                   required
                 />

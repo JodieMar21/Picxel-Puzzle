@@ -370,7 +370,7 @@ function generateFullOverviewPage(result: PixelationResult, sortedColors: any[],
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 28px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('PICXEL OVERVIEW', canvas.width / 2, 40);
+  ctx.fillText('FRACTIX OVERVIEW', canvas.width / 2, 40);
   
   // Draw subtitle
   ctx.font = '16px Arial';
