@@ -51,6 +51,12 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
+      - name: Debug Windows release contents
+        run: |
+          echo "=== Contents of release/ directory ==="
+          find release -type f | sort || echo "release/ directory is empty or does not exist"
+        shell: bash
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -89,6 +95,11 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
+      - name: Debug macOS release contents
+        run: |
+          echo "=== Contents of release/ directory ==="
+          find release -type f | sort || echo "release/ directory is empty or does not exist"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -126,15 +137,37 @@ jobs:
           name: picxel-macos-latest
           path: release/macos
 
+      - name: Debug release folder contents
+        run: |
+          echo "=== Full release/ tree ==="
+          find release -type f | sort || echo "Nothing found in release/"
+
       - name: Collect release files
         id: files
         run: |
           mkdir -p release
-          mapfile -t paths < <(find release -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' \) 2>/dev/null | sort -u)
+          mapfile -t paths < <(find release -type f \( \
+            -name '*.exe' -o \
+            -name '*.dmg' -o \
+            -name '*.zip' -o \
+            -name '*.AppImage' -o \
+            -name '*.deb' -o \
+            -name '*.rpm' -o \
+            -name '*.pkg' -o \
+            -name '*.msi' -o \
+            -name '*.nsis' \
+          \) 2>/dev/null | sort -u)
+
           if [ ${#paths[@]} -eq 0 ]; then
-            echo "No .exe/.dmg/.zip artifacts found under release/"
+            echo "ERROR: No installable artifacts found under release/"
+            echo "Files present:"
+            find release -type f | sort
             exit 1
           fi
+
+          echo "Found artifacts:"
+          printf '  %s\n' "${paths[@]}"
+
           {
             echo 'list<<EOF'
             printf '%s\n' "${paths[@]}"
