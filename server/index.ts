@@ -47,55 +47,74 @@ async function seedDevLicense(): Promise<void> {
   const devKey = process.env.DEV_LICENSE_KEY;
   if (!devKey) return;
 
-  const keyHash = hashLicenseKey(devKey);
-  const existing = await storage.getLicenseByHash(keyHash);
-  if (existing) {
-    log(`[dev] Dev license already in DB — use key: ${devKey}`);
-    return;
+  try {
+    const keyHash = hashLicenseKey(devKey);
+    const existing = await storage.getLicenseByHash(keyHash);
+    if (existing) {
+      log(`[dev] Dev license already in DB — use key: ${devKey}`);
+      return;
+    }
+
+    await storage.createLicense({
+      licenseKey: devKey,
+      licenseKeyHash: keyHash,
+      stripeSessionId: `dev-seed-${Date.now()}`,
+      customerEmail: "dev@local.test",
+    });
+
+    log(`[dev] Dev license seeded — activate the app with: ${devKey}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`[dev] Dev license seed skipped: ${message}`);
   }
-
-  await storage.createLicense({
-    licenseKey: devKey,
-    licenseKeyHash: keyHash,
-    stripeSessionId: `dev-seed-${Date.now()}`,
-    customerEmail: "dev@local.test",
-  });
-
-  log(`[dev] Dev license seeded — activate the app with: ${devKey}`);
 }
 
 (async () => {
-  await seedDevLicense();
+  try {
+    const server = await registerRoutes(app);
 
-  const server = await registerRoutes(app);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      throw err;
+    });
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    const port = parseInt(process.env.PORT || "5000", 10);
+
+    await new Promise<void>((resolve, reject) => {
+      const onError = (err: Error) => reject(err);
+      server.once("error", onError);
+      server.listen(
+        {
+          port,
+          host: "127.0.0.1",
+          reusePort: true,
+        },
+        () => {
+          server.off("error", onError);
+          log(`serving on port ${port}`);
+          resolve();
+        },
+      );
+    });
+
+    // After listen so /api/health is reachable (e.g. Electron waitForServerReady)
+    // even if DB seed is slow or hangs briefly.
+    await seedDevLicense();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[server] Failed to start:", message);
+    process.exit(1);
   }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "127.0.0.1",
-    reusePort: true
-  }, () => {
-    log(`serving on port ${port}`);
-  });
 })();

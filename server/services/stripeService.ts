@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import crypto from "crypto";
+import https from "node:https";
 import { storage } from "../storage";
 import { hashLicenseKey } from "./licenseService";
 import { sendLicenseKeyEmail } from "./emailService";
@@ -11,7 +12,19 @@ function getStripe(): Stripe {
   if (!stripeSecretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  return new Stripe(stripeSecretKey, { apiVersion: "2026-03-25.dahlia" });
+
+  const tlsVerify =
+    process.env.STRIPE_TLS_REJECT_UNAUTHORIZED !== "false" &&
+    process.env.STRIPE_TLS_REJECT_UNAUTHORIZED !== "0";
+
+  const httpAgent = tlsVerify
+    ? undefined
+    : new https.Agent({ rejectUnauthorized: false });
+
+  return new Stripe(stripeSecretKey, {
+    apiVersion: "2026-03-25.dahlia",
+    ...(httpAgent ? { httpAgent } : {}),
+  });
 }
 
 function generateLicenseKey(): string {
