@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
 import { spawn, type ChildProcess } from "child_process";
@@ -10,10 +10,12 @@ const DEFAULT_SERVER_PORT = 5000;
 const ELECTRON_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 const isDev = process.env.ELECTRON_IS_DEV === "1" || !!ELECTRON_RENDERER_URL;
 
-function getServerEntryPath(): string {
+function resolveServerEntryPath(): string | null {
   const localPath = join(process.cwd(), "dist", "index.js");
   const bundledPath = join(process.resourcesPath, "app.asar.unpacked", "dist", "index.js");
-  return existsSync(localPath) ? localPath : bundledPath;
+  if (existsSync(localPath)) return localPath;
+  if (existsSync(bundledPath)) return bundledPath;
+  return null;
 }
 
 function getPreloadPath(): string {
@@ -28,11 +30,11 @@ function getPreloadPath(): string {
   return bundledPathJs;
 }
 
-function startLocalServer(port: number): void {
-  const serverEntry = getServerEntryPath();
+function startLocalServer(port: number, serverEntry: string): void {
   localServerProcess = spawn(process.execPath, [serverEntry], {
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
       PORT: String(port),
       FRACTIX_DESKTOP: "1",
       NODE_ENV: "production",
@@ -41,7 +43,7 @@ function startLocalServer(port: number): void {
   });
 }
 
-async function waitForServerReady(port: number, timeoutMs = 10000): Promise<boolean> {
+async function waitForServerReady(port: number, timeoutMs = 30000): Promise<boolean> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     try {
@@ -90,11 +92,28 @@ app.whenReady().then(async () => {
     return;
   }
 
-  const port = Number(process.env.FRACTIX_DESKTOP_PORT || DEFAULT_SERVER_PORT);
-  startLocalServer(port);
+  const serverEntry = resolveServerEntryPath();
+  if (!serverEntry) {
+    dialog.showErrorBox(
+      "Picxel",
+      "Could not find the production server build (dist/index.js). Run npm run build, then npm run build:electron, and start the desktop app again.",
+    );
+    app.quit();
+    return;
+  }
 
-  // Avoid racing the local Express server; BrowserWindow may exit if loadURL fails early.
-  await waitForServerReady(port);
+  const port = Number(process.env.FRACTIX_DESKTOP_PORT || DEFAULT_SERVER_PORT);
+  startLocalServer(port, serverEntry);
+
+  const ready = await waitForServerReady(port);
+  if (!ready) {
+    dialog.showErrorBox(
+      "Picxel",
+      `The embedded server did not become ready on port ${port}. Run npm run build to refresh dist/index.js, ensure nothing else is using that port, then try again.`,
+    );
+    app.quit();
+    return;
+  }
 
   createWindow(`http://127.0.0.1:${port}`);
 });
