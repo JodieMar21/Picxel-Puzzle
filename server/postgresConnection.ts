@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { PoolConfig } from "pg";
 
 function isLocalPostgresHost(hostname: string): boolean {
@@ -23,6 +24,21 @@ export function parsePostgresUrl(connectionString: string): {
     password: decodeURIComponent(u.password),
     database,
   };
+}
+
+function buildSslOptions(rejectUnauthorized: boolean): NonNullable<PoolConfig["ssl"]> {
+  const caPath = process.env.DATABASE_SSL_CA_FILE?.trim();
+  if (!caPath) {
+    return { rejectUnauthorized };
+  }
+  let ca: string;
+  try {
+    ca = fs.readFileSync(caPath, "utf8");
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    throw new Error(`DATABASE_SSL_CA_FILE: could not read "${caPath}": ${err}`);
+  }
+  return { rejectUnauthorized, ca };
 }
 
 export function buildPoolConfig(): PoolConfig {
@@ -61,9 +77,9 @@ export function buildPoolConfig(): PoolConfig {
       explicitSslMode;
 
     if (forceSsl) {
-      ssl = { rejectUnauthorized };
+      ssl = buildSslOptions(rejectUnauthorized);
     } else if (!isLocalPostgresHost(u.hostname)) {
-      ssl = { rejectUnauthorized };
+      ssl = buildSslOptions(rejectUnauthorized);
     }
   } catch {
     // Invalid URL: fall back to connection string only.
