@@ -101,7 +101,7 @@ import_electron.app.whenReady().then(async () => {
     import_electron.app.quit();
     return;
   }
-  createWindow(`http://127.0.0.1:${port}`);
+  createWindow(`${process.env.ELECTRON_RENDERER_URL ?? `http://127.0.0.1:${port}`}`);
 });
 import_electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
