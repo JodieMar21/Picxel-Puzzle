@@ -12,6 +12,9 @@
   },
   "devDependencies": {
     "vite": "^5.x.x",
-    "@vitejs/plugin-react": "^4.x.x"
+    "@vitejs/plugin-react": "^4.x.x",
+    "tailwindcss": "^3.x.x",
+    "postcss": "^8.x.x",
+    "autoprefixer": "^10.x.x"
   }
 }
