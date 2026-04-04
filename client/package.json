@@ -8,13 +8,14 @@
   },
   "dependencies": {
     "react": "^18.x.x",
-    "react-dom": "^18.x.x"
+    "react-dom": "^18.x.x",
+    "wouter": "^3.9.0"
   },
   "devDependencies": {
-    "vite": "^5.x.x",
     "@vitejs/plugin-react": "^4.x.x",
-    "tailwindcss": "^3.x.x",
+    "autoprefixer": "^10.x.x",
     "postcss": "^8.x.x",
-    "autoprefixer": "^10.x.x"
+    "tailwindcss": "^3.x.x",
+    "vite": "^5.x.x"
   }
 }
