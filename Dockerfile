@@ -57,11 +57,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Electron is only for desktop builds; its postinstall/binary often fails on Alpine/CI.
+# Skip lifecycle scripts: Electron, optional native addons (e.g. keytar), and other postinstalls
+# often fail on Alpine; the web/API Docker build does not need them.
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
 # Install all dependencies for building (including dev dependencies)
-RUN npm install --no-audit --no-fund --legacy-peer-deps
+RUN npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts \
+  && node node_modules/esbuild/install.js
 
 ENV NODE_ENV=production
 
