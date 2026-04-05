@@ -122,13 +122,35 @@ export async function handleStripeWebhook(payload: Buffer, signature: string): P
 }
 
 export async function getLicenseKeyForSession(sessionId: string): Promise<string | null> {
-  const license = await storage.getLicenseByStripeSession(sessionId);
+  let license;
+  try {
+    license = await storage.getLicenseByStripeSession(sessionId);
+  } catch (e: unknown) {
+    const m = e instanceof Error ? e.message : String(e);
+    if (/certificate|self-signed|ssl|tls/i.test(m)) {
+      throw new Error(
+        `${m} (Postgres TLS: use sslmode=verify-full and DATABASE_SSL_CA_FILE for strict verify, or DATABASE_SSL_REJECT_UNAUTHORIZED=false if you must disable verification.)`,
+      );
+    }
+    throw e;
+  }
   if (license) return license.licenseKey;
 
   // Fallback for delayed/missed webhook delivery in development:
   // verify paid status directly with Stripe, then issue the key once.
   const stripe = getStripe();
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId);
+  } catch (e: unknown) {
+    const m = e instanceof Error ? e.message : String(e);
+    if (/certificate|self-signed|ssl|tls/i.test(m)) {
+      throw new Error(
+        `${m} (Stripe API TLS: set STRIPE_TLS_REJECT_UNAUTHORIZED=false only if you are behind a TLS-inspecting proxy.)`,
+      );
+    }
+    throw e;
+  }
   const customerEmail = session.customer_details?.email;
   const paymentCompleted =
     session.payment_status === "paid" ||

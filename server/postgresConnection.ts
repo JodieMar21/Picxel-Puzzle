@@ -41,6 +41,25 @@ function buildSslOptions(rejectUnauthorized: boolean): NonNullable<PoolConfig["s
   return { rejectUnauthorized, ca };
 }
 
+
+/**
+ * Maps URL sslmode to Node TLS verify behavior (aligned with PostgreSQL libpq).
+ * `require` encrypts but does not verify server identity; `verify-ca` / `verify-full` do.
+ * Env DATABASE_SSL_REJECT_UNAUTHORIZED=false|0 always disables verify; true|1 forces verify.
+ */
+function rejectUnauthorizedForPostgresSsl(
+  sslmode: string | null | undefined,
+  implicitRemoteSsl: boolean,
+): boolean {
+  const v = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED?.trim().toLowerCase();
+  if (v === "false" || v === "0") return false;
+  if (v === "true" || v === "1") return true;
+
+  const mode = sslmode ?? (implicitRemoteSsl ? "require" : null);
+  if (mode === "verify-full" || mode === "verify-ca") return true;
+  return false;
+}
+
 export function buildPoolConfig(): PoolConfig {
   const connectionString = process.env.DATABASE_URL!;
   const connectionTimeoutMillis = parseInt(
@@ -64,10 +83,6 @@ export function buildPoolConfig(): PoolConfig {
       return base;
     }
 
-    const rejectUnauthorized =
-      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" &&
-      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "0";
-
     const explicitSslMode =
       mode === "require" || mode === "verify-ca" || mode === "verify-full";
 
@@ -77,9 +92,11 @@ export function buildPoolConfig(): PoolConfig {
       explicitSslMode;
 
     if (forceSsl) {
-      ssl = buildSslOptions(rejectUnauthorized);
+      ssl = buildSslOptions(rejectUnauthorizedForPostgresSsl(mode, false));
     } else if (!isLocalPostgresHost(u.hostname)) {
-      ssl = buildSslOptions(rejectUnauthorized);
+      ssl = buildSslOptions(
+        rejectUnauthorizedForPostgresSsl(mode, true),
+      );
     }
   } catch {
     // Invalid URL: fall back to connection string only.
