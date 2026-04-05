@@ -1,7 +1,14 @@
 {
-    "buildCommand": "npm install && npm run build",
+    "buildCommand": "npm install --include=dev && npm run build",
     "outputDirectory": "dist",
     "rewrites": [
-      { "source": "/(.*)", "destination": "/index.html" }
+        {
+            "source": "/api/:path*",
+            "destination": "https://picxel-puzzle-production.up.railway.app/api/:path*"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
     ]
-  }
+}
