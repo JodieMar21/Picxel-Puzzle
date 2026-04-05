@@ -57,8 +57,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Electron is only for desktop builds; its postinstall/binary often fails on Alpine/CI.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+
 # Install all dependencies for building (including dev dependencies)
-RUN npm install --no-audit --no-fund
+RUN npm install --no-audit --no-fund --legacy-peer-deps
 
 ENV NODE_ENV=production
 
