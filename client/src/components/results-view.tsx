@@ -11,6 +11,7 @@ import LegoBrickDisplay from "./lego-brick-display";
 import PixelEditor from "./pixel-editor";
 import type { PixelationResult } from "@shared/schema";
 import { calculateEstimatedBuildTime, getDifficultyLevel, downloadImageAsFile, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
+import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 
 
@@ -37,12 +38,13 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
     mutationFn: async () => {
       if (!projectId) throw new Error('No project ID available');
       
-      const response = await fetch(`/api/projects/${projectId}/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getCurrentLicenseHeaders() },
+      const response = await fetch(apiUrl(`/api/projects/${projectId}/save`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getCurrentLicenseHeaders() },
+        credentials: "omit",
         body: JSON.stringify({
           name: `Saved Project ${new Date().toLocaleDateString()}`,
-          pixelationResult: editedResults
+          pixelationResult: editedResults,
         }),
       });
       

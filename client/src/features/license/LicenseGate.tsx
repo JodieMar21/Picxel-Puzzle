@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ExternalLink, Loader2, ShieldCheck } from "lucide-react";
+import { apiUrl } from "@/lib/apiBase";
 import { configureLicenseHeaders } from "@/lib/queryClient";
 import { activateLicense, deactivateLicense, validateLicense } from "./api";
 import { getDeviceId, getDeviceName } from "./device";
@@ -141,7 +142,12 @@ export default function LicenseGate({ children }: PropsWithChildren) {
     setIsBuying(true);
     setErrorMessage(null);
     try {
-      const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const res = await fetch(apiUrl("/api/checkout"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+        credentials: "omit",
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: "Could not start checkout." }));
         throw new Error(err.message);

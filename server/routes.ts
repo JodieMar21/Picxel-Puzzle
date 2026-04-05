@@ -9,6 +9,7 @@ import path from "path";
 import fs from "fs";
 import { licenseService } from "./services/licenseService";
 import { createCheckoutSession, handleStripeWebhook, getLicenseKeyForSession } from "./services/stripeService";
+import { log } from "./vite";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -181,7 +182,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No Stripe price ID configured." });
       }
 
-      const appBaseUrl = process.env.APP_BASE_URL ?? `http://localhost:${process.env.PORT ?? 5000}`;
+      const rawBase =
+        process.env.APP_BASE_URL ?? `http://localhost:${process.env.PORT ?? 5000}`;
+      const appBaseUrl = rawBase.replace(/\/+$/, "");
       const result = await createCheckoutSession({
         priceId,
         successUrl: `${appBaseUrl}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -218,21 +221,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  function maskStripeSessionId(id: string): string {
+    return id.length <= 12 ? id : `${id.slice(0, 12)}…`;
+  }
+
   // License key lookup by Stripe session (for purchase success page)
   app.get("/api/license/lookup", async (req, res) => {
+    const origin = req.headers.origin ?? "none";
     const sessionId = req.query.session_id;
     if (!sessionId || typeof sessionId !== "string") {
+      log(`[license:lookup] origin=${origin} session=(missing) status=400`);
       return res.status(400).json({ message: "Missing session_id query parameter." });
     }
+
+    const sessionLabel = maskStripeSessionId(sessionId);
+    log(`[license:lookup] origin=${origin} session=${sessionLabel}`);
 
     try {
       const licenseKey = await getLicenseKeyForSession(sessionId);
       if (!licenseKey) {
+        log(`[license:lookup] origin=${origin} session=${sessionLabel} status=404 not_ready`);
         return res.status(404).json({ message: "License not found for this session. It may still be processing — please check your email." });
       }
+      log(`[license:lookup] origin=${origin} session=${sessionLabel} status=200 ok`);
       res.json({ licenseKey });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message ?? "Failed to look up license." });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[license:lookup] origin=${origin} session=${sessionLabel}`, error);
+      res.status(500).json({ message: message || "Failed to look up license." });
     }
   });
 

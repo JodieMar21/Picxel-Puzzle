@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { apiUrl } from "@/lib/apiBase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CheckCircle, Copy, Download, Loader2, AlertCircle } from "lucide-react";
@@ -15,7 +15,6 @@ const GITHUB_RELEASES_URL =
   "https://github.com/JodieMar21/Picxel-Puzzle/releases/latest";
 
 export default function PurchaseSuccess() {
-  const [location] = useLocation();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [copied, setCopied] = useState(false);
 
@@ -28,13 +27,37 @@ export default function PurchaseSuccess() {
     }
 
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 15;
+    const pollIntervalMs = 2500;
 
     async function poll() {
+      const lookupUrl = apiUrl(`/api/license/lookup?session_id=${encodeURIComponent(sessionId!)}`);
+      if (import.meta.env.DEV) {
+        console.log("[purchase-success] lookup URL", lookupUrl);
+      }
+
       try {
-        const res = await fetch(`/api/license/lookup?session_id=${encodeURIComponent(sessionId!)}`);
+        const res = await fetch(lookupUrl, { credentials: "omit" });
+
         if (res.ok) {
-          const data = await res.json();
+          const text = await res.text();
+          let data: { licenseKey?: unknown };
+          try {
+            data = JSON.parse(text) as { licenseKey?: unknown };
+          } catch (parseErr) {
+            console.error("[purchase-success] expected JSON from lookup, got:", text.slice(0, 240), parseErr);
+            setState({
+              status: "error",
+              message:
+                "Server returned an invalid response (expected JSON). Check VITE_API_URL points to your Railway API.",
+            });
+            return;
+          }
+          if (typeof data.licenseKey !== "string" || !data.licenseKey) {
+            console.error("[purchase-success] missing licenseKey in body:", data);
+            setState({ status: "error", message: "Server response was missing a license key." });
+            return;
+          }
           setState({ status: "success", licenseKey: data.licenseKey });
           return;
         }
@@ -42,17 +65,36 @@ export default function PurchaseSuccess() {
         if (res.status === 404) {
           attempts++;
           if (attempts < maxAttempts) {
-            setTimeout(poll, 2000);
+            setTimeout(poll, pollIntervalMs);
             return;
           }
           setState({ status: "pending" });
           return;
         }
 
-        const err = await res.json().catch(() => ({ message: "Unexpected error." }));
-        setState({ status: "error", message: err.message });
-      } catch {
-        setState({ status: "error", message: "Could not reach the server. Please check your email for your license key." });
+        const errText = await res.text();
+        let errMessage = "Unexpected error.";
+        try {
+          const parsed = JSON.parse(errText) as { message?: string };
+          if (typeof parsed.message === "string") errMessage = parsed.message;
+        } catch {
+          if (errText) errMessage = `Unexpected response (${res.status}).`;
+        }
+        setState({ status: "error", message: errMessage });
+      } catch (err) {
+        console.error("[purchase-success] lookup failed", err);
+        const msg = err instanceof Error ? err.message : String(err);
+        const isNetwork =
+          msg === "Failed to fetch" ||
+          msg.includes("NetworkError") ||
+          msg.toLowerCase().includes("network");
+        const hint = isNetwork
+          ? "Could not reach the API (often CORS or a wrong API URL). Ensure APP_BASE_URL on the server matches this site’s origin exactly, or add extra origins in CORS_ALLOWED_ORIGINS on Railway."
+          : msg;
+        setState({
+          status: "error",
+          message: `${hint} If checkout succeeded, check your email for your license key.`,
+        });
       }
     }
 

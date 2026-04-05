@@ -1,11 +1,62 @@
 import "dotenv/config";
+import cors from "cors";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { hashLicenseKey } from "./services/licenseService";
 
+function collectCorsOrigins(): Set<string> {
+  const allowed = new Set<string>();
+  const appBase = process.env.APP_BASE_URL;
+  if (appBase) {
+    try {
+      allowed.add(new URL(appBase).origin);
+    } catch {
+      /* ignore invalid APP_BASE_URL */
+    }
+  }
+  const extra = process.env.CORS_ALLOWED_ORIGINS;
+  if (extra) {
+    for (const part of extra.split(",")) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      try {
+        allowed.add(new URL(trimmed).origin);
+      } catch {
+        /* ignore invalid entry */
+      }
+    }
+  }
+  if (process.env.NODE_ENV !== "production") {
+    for (const o of [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
+    ]) {
+      allowed.add(o);
+    }
+  }
+  return allowed;
+}
+
+const corsAllowedOrigins = collectCorsOrigins();
+
 const app = express();
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || corsAllowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-License-Entitlement", "X-Device-Id"],
+  }),
+);
 app.use((req, res, next) => {
   // Stripe webhook must receive the untouched raw payload for signature checks.
   if (req.path === "/api/webhooks/stripe") return next();
@@ -91,6 +142,8 @@ async function seedDevLicense(): Promise<void> {
     }
 
     const port = parseInt(process.env.PORT || "5000", 10);
+    const listenHost =
+      process.env.HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error) => reject(err);
@@ -98,7 +151,7 @@ async function seedDevLicense(): Promise<void> {
       server.listen(
         {
           port,
-          host: "127.0.0.1",
+          host: listenHost,
           reusePort: true,
         },
         () => {

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 import ImageEditor from "@/components/image-editor";
 
@@ -61,11 +62,12 @@ export default function BoardConfiguration({
         formData.append('image', data.image);
       }
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch(apiUrl("/api/upload"), {
+        method: "POST",
         headers: {
           ...getCurrentLicenseHeaders(),
         },
+        credentials: "omit",
         body: formData,
       });
 
