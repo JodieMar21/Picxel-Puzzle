@@ -142,24 +142,22 @@ async function seedDevLicense(): Promise<void> {
     }
 
     const port = parseInt(process.env.PORT || "5000", 10);
+    // Railway forwards public traffic only to 0.0.0.0; NODE_ENV may be unset on the platform.
+    const onRailway =
+      process.env.RAILWAY_ENVIRONMENT !== undefined ||
+      process.env.RAILWAY_PROJECT_ID !== undefined;
     const listenHost =
-      process.env.HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+      process.env.HOST ??
+      (process.env.NODE_ENV === "production" || onRailway ? "0.0.0.0" : "127.0.0.1");
 
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error) => reject(err);
       server.once("error", onError);
-      server.listen(
-        {
-          port,
-          host: listenHost,
-          reusePort: true,
-        },
-        () => {
-          server.off("error", onError);
-          log(`serving on port ${port}`);
-          resolve();
-        },
-      );
+      server.listen(port, listenHost, () => {
+        server.off("error", onError);
+        log(`serving on http://${listenHost}:${port}`);
+        resolve();
+      });
     });
 
     // After listen so /api/health is reachable (e.g. Electron waitForServerReady)

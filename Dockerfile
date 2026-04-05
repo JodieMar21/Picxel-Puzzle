@@ -41,7 +41,8 @@ CMD ["npm", "run", "dev"]
 # Builder stage
 # -----------------------------
 FROM node:20-alpine AS builder
-ENV NODE_ENV=production
+# NODE_ENV=production before npm install omits devDependencies; vite and other build tools are devDependencies.
+ENV NODE_ENV=development
 
 # Install system dependencies for building
 RUN apk add --no-cache \
@@ -58,6 +59,8 @@ COPY package*.json ./
 
 # Install all dependencies for building (including dev dependencies)
 RUN npm install --no-audit --no-fund
+
+ENV NODE_ENV=production
 
 # Copy source code
 COPY . .
