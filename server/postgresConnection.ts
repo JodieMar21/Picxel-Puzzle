@@ -26,6 +26,21 @@ export function parsePostgresUrl(connectionString: string): {
   };
 }
 
+/**
+ * When PoolConfig.ssl is set, drop `sslmode` from the URL so libpq-style URL flags
+ * (e.g. prefer/allow) do not fight Node's TLS stack — avoids slow or stuck connects.
+ */
+function connectionStringForExplicitSsl(connectionString: string): string {
+  try {
+    const u = new URL(connectionString);
+    if (!u.searchParams.has("sslmode")) return connectionString;
+    u.searchParams.delete("sslmode");
+    return u.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
 function buildSslOptions(rejectUnauthorized: boolean): NonNullable<PoolConfig["ssl"]> {
   const caPath = process.env.DATABASE_SSL_CA_FILE?.trim();
   if (!caPath) {
@@ -44,7 +59,9 @@ function buildSslOptions(rejectUnauthorized: boolean): NonNullable<PoolConfig["s
 
 /**
  * Maps URL sslmode to Node TLS verify behavior (aligned with PostgreSQL libpq).
- * `require` encrypts but does not verify server identity; `verify-ca` / `verify-full` do.
+ * `require` / `prefer` / `allow` — encrypted without full cert verify by default;
+ * `verify-ca` / `verify-full` verify the chain. (We strip sslmode from the URL when
+ * passing Pool.ssl so negotiation is not duplicated.)
  * Env DATABASE_SSL_REJECT_UNAUTHORIZED=false|0 always disables verify; true|1 forces verify.
  */
 function rejectUnauthorizedForPostgresSsl(
@@ -103,5 +120,9 @@ export function buildPoolConfig(): PoolConfig {
   }
 
   if (!ssl) return base;
-  return { ...base, ssl };
+  return {
+    ...base,
+    connectionString: connectionStringForExplicitSsl(connectionString),
+    ssl,
+  };
 }
