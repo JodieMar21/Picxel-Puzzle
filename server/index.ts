@@ -2,7 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { log } from "./log";
+import { serveStatic } from "./serveStatic";
 import { storage } from "./storage";
 import { hashLicenseKey } from "./services/licenseService";
 
@@ -136,6 +137,7 @@ async function seedDevLicense(): Promise<void> {
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
     if (app.get("env") === "development") {
+      const { setupVite } = await import("picxel-vite-dev");
       await setupVite(app, server);
     } else {
       serveStatic(app);

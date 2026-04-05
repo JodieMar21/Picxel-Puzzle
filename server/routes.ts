@@ -9,7 +9,7 @@ import path from "path";
 import fs from "fs";
 import { licenseService } from "./services/licenseService";
 import { createCheckoutSession, handleStripeWebhook, getLicenseKeyForSession } from "./services/stripeService";
-import { log } from "./vite";
+import { log } from "./log";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;

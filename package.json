@@ -4,13 +4,16 @@
   "version": "1.0.0",
   "main": "dist-electron/main.cjs",
   "license": "MIT",
+  "imports": {
+    "picxel-vite-dev": "./server/vite-dev.ts"
+  },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:web": "NODE_ENV=development tsx server/index.ts",
     "dev:renderer": "vite",
     "dev:electron": "cross-env ELECTRON_RENDERER_URL=http://localhost:5173 ELECTRON_IS_DEV=1 tsx electron/main.ts",
     "dev:desktop": "concurrently -k \"npm run dev:web\" \"npm run dev:renderer\" \"wait-on http://localhost:5000 http://localhost:5173 && npm run dev:electron\"",
-    "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --alias:picxel-vite-dev=./server/vite-dev.stub.ts",
     "build:electron": "npx esbuild electron/main.ts electron/preload.ts --platform=node --bundle --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:keytar --external:electron",
     "build:desktop": "npm run build && npm run build:electron && electron-builder --publish never",
     "build:desktop:publish": "npm run build && npm run build:electron && electron-builder --publish always",
