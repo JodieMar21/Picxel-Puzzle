@@ -37,6 +37,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Write packaged desktop.env (embedded server)
+        shell: bash
+        run: |
+          mkdir -p electron-desktop-env
+          : > electron-desktop-env/desktop.env
+          append() { [ -n "${2:-}" ] && printf '%s=%s\n' "$1" "$2" >> electron-desktop-env/desktop.env || true; }
+          append DATABASE_URL "$DATABASE_URL"
+          append LICENSE_SIGNING_SECRET "$LICENSE_SIGNING_SECRET"
+          append APP_BASE_URL "$APP_BASE_URL"
+          append STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
+          append STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
+          append STRIPE_PRICE_ID "$STRIPE_PRICE_ID"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+
+
       - name: Build desktop packages
         run: npm run build:desktop
         env:
@@ -80,6 +101,27 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Write packaged desktop.env (embedded server)
+        shell: bash
+        run: |
+          mkdir -p electron-desktop-env
+          : > electron-desktop-env/desktop.env
+          append() { [ -n "${2:-}" ] && printf '%s=%s\n' "$1" "$2" >> electron-desktop-env/desktop.env || true; }
+          append DATABASE_URL "$DATABASE_URL"
+          append LICENSE_SIGNING_SECRET "$LICENSE_SIGNING_SECRET"
+          append APP_BASE_URL "$APP_BASE_URL"
+          append STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
+          append STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
+          append STRIPE_PRICE_ID "$STRIPE_PRICE_ID"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+
 
       - name: Build desktop packages
         run: npm run build:desktop

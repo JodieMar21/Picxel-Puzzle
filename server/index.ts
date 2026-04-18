@@ -148,9 +148,14 @@ async function seedDevLicense(): Promise<void> {
     const onRailway =
       process.env.RAILWAY_ENVIRONMENT !== undefined ||
       process.env.RAILWAY_PROJECT_ID !== undefined;
+    const isDesktop = process.env.FRACTIX_DESKTOP === "1";
     const listenHost =
       process.env.HOST ??
-      (process.env.NODE_ENV === "production" || onRailway ? "0.0.0.0" : "127.0.0.1");
+      (isDesktop
+        ? "127.0.0.1"
+        : process.env.NODE_ENV === "production" || onRailway
+          ? "0.0.0.0"
+          : "127.0.0.1");
 
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error) => reject(err);

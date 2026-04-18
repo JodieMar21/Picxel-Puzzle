@@ -8,3 +8,6 @@ vite.config.ts.*
 *.sql
 *release/**
 uploads/**
+
+# Local desktop packaging secrets (CI generates this file before electron-builder)
+electron-desktop-env/desktop.env

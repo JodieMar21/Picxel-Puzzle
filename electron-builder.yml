@@ -8,8 +8,18 @@ files:
   - node_modules/**/*
   - package.json
 asarUnpack:
+  # package.json next to dist/ so Node treats dist/index.js as ESM (type: module).
+  - package.json
   - dist/**/*
+  # sharp loads native .node binaries — cannot run from inside app.asar
+  - node_modules/sharp/**/*
+  - node_modules/@img/**/*
   - node_modules/keytar/**/*
+extraResources:
+  # Written in CI from secrets; loaded by Electron before spawning the embedded server.
+  - from: electron-desktop-env/
+    filter:
+      - desktop.env
 mac:
   target:
     - dmg

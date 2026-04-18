@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { config as loadEnvFile } from "dotenv";
 import { existsSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 import { spawn, type ChildProcess } from "child_process";
 
 let appWindow: BrowserWindow | null = null;
@@ -30,8 +31,17 @@ function getPreloadPath(): string {
   return bundledPathJs;
 }
 
-function startLocalServer(port: number, serverEntry: string): void {
-  localServerProcess = spawn(process.execPath, [serverEntry], {
+function loadPackagedDesktopEnv(): void {
+  const desktopEnvPath = join(process.resourcesPath, "desktop.env");
+  if (existsSync(desktopEnvPath)) {
+    loadEnvFile({ path: desktopEnvPath });
+  }
+}
+
+function startLocalServer(port: number, serverEntry: string): ChildProcess {
+  const serverRoot = dirname(dirname(serverEntry));
+  return spawn(process.execPath, [serverEntry], {
+    cwd: serverRoot,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
@@ -39,7 +49,7 @@ function startLocalServer(port: number, serverEntry: string): void {
       FRACTIX_DESKTOP: "1",
       NODE_ENV: "production",
     },
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
   });
 }
 
@@ -92,6 +102,8 @@ app.whenReady().then(async () => {
     return;
   }
 
+  loadPackagedDesktopEnv();
+
   const serverEntry = resolveServerEntryPath();
   if (!serverEntry) {
     dialog.showErrorBox(
@@ -103,13 +115,30 @@ app.whenReady().then(async () => {
   }
 
   const port = Number(process.env.FRACTIX_DESKTOP_PORT || DEFAULT_SERVER_PORT);
-  startLocalServer(port, serverEntry);
+  localServerProcess = startLocalServer(port, serverEntry);
+
+  let serverLog = "";
+  const appendLog = (chunk: Buffer) => {
+    serverLog = (serverLog + chunk.toString()).slice(-4000);
+  };
+  localServerProcess.stdout?.on("data", appendLog);
+  localServerProcess.stderr?.on("data", appendLog);
+  localServerProcess.on("exit", (code, signal) => {
+    if (code != null && code !== 0) {
+      console.error(`[desktop] embedded server exited code=${code}`);
+    }
+    if (signal) {
+      console.error(`[desktop] embedded server killed signal=${signal}`);
+    }
+  });
 
   const ready = await waitForServerReady(port);
   if (!ready) {
+    const hint =
+      serverLog.trim().length > 0 ? `\n\nLast server output:\n${serverLog.trim()}` : "";
     dialog.showErrorBox(
       "Picxel",
-      `The embedded server did not become ready on port ${port}. Run npm run build to refresh dist/index.js, ensure nothing else is using that port, then try again.`,
+      `The embedded server did not become ready on port ${port}. Ensure DATABASE_URL is set (e.g. via desktop.env from your build, or system environment), nothing else is using that port, and try again.${hint}`,
     );
     app.quit();
     return;
