@@ -8,9 +8,11 @@ files:
   - node_modules/**/*
   - package.json
 asarUnpack:
-  # package.json next to dist/ so Node treats dist/index.js as ESM (type: module).
+  # package.json next to dist/ for consistent app layout; server entry is dist/index.cjs (CommonJS).
   - package.json
   - dist/**/*
+  # Embedded server imports dotenv/config at runtime (kept external in esbuild bundle).
+  - node_modules/dotenv/**/*
   # sharp loads native .node binaries — cannot run from inside app.asar
   - node_modules/sharp/**/*
   - node_modules/@img/**/*

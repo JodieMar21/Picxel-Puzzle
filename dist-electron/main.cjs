@@ -431,10 +431,14 @@ var DEFAULT_SERVER_PORT = 5e3;
 var ELECTRON_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 var isDev = process.env.ELECTRON_IS_DEV === "1" || !!ELECTRON_RENDERER_URL;
 function resolveServerEntryPath() {
-  const localPath = (0, import_path.join)(process.cwd(), "dist", "index.js");
-  const bundledPath = (0, import_path.join)(process.resourcesPath, "app.asar.unpacked", "dist", "index.js");
-  if ((0, import_fs.existsSync)(localPath)) return localPath;
-  if ((0, import_fs.existsSync)(bundledPath)) return bundledPath;
+  const localCjs = (0, import_path.join)(process.cwd(), "dist", "index.cjs");
+  const localJs = (0, import_path.join)(process.cwd(), "dist", "index.js");
+  const bundledCjs = (0, import_path.join)(process.resourcesPath, "app.asar.unpacked", "dist", "index.cjs");
+  const bundledJs = (0, import_path.join)(process.resourcesPath, "app.asar.unpacked", "dist", "index.js");
+  if ((0, import_fs.existsSync)(localCjs)) return localCjs;
+  if ((0, import_fs.existsSync)(bundledCjs)) return bundledCjs;
+  if ((0, import_fs.existsSync)(localJs)) return localJs;
+  if ((0, import_fs.existsSync)(bundledJs)) return bundledJs;
   return null;
 }
 function getPreloadPath() {
@@ -514,7 +518,7 @@ import_electron.app.whenReady().then(async () => {
   if (!serverEntry) {
     import_electron.dialog.showErrorBox(
       "Picxel",
-      "Could not find the production server build (dist/index.js). Run npm run build, then npm run build:electron, and start the desktop app again."
+      "Could not find the production server build (dist/index.cjs). Run npm run build, then npm run build:electron, and start the desktop app again."
     );
     import_electron.app.quit();
     return;

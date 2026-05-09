@@ -2,8 +2,15 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 
+/** Resolves `dist/public` next to the bundled `dist/index.cjs` (argv[1]), for both `node` and Electron. */
+function productionPublicDir(): string {
+  const entry = process.argv[1];
+  const scriptDir = entry ? path.dirname(path.resolve(entry)) : process.cwd();
+  return path.join(scriptDir, "public");
+}
+
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = productionPublicDir();
 
   if (!fs.existsSync(distPath)) {
     throw new Error(

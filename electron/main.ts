@@ -12,10 +12,14 @@ const ELECTRON_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 const isDev = process.env.ELECTRON_IS_DEV === "1" || !!ELECTRON_RENDERER_URL;
 
 function resolveServerEntryPath(): string | null {
-  const localPath = join(process.cwd(), "dist", "index.js");
-  const bundledPath = join(process.resourcesPath, "app.asar.unpacked", "dist", "index.js");
-  if (existsSync(localPath)) return localPath;
-  if (existsSync(bundledPath)) return bundledPath;
+  const localCjs = join(process.cwd(), "dist", "index.cjs");
+  const localJs = join(process.cwd(), "dist", "index.js");
+  const bundledCjs = join(process.resourcesPath, "app.asar.unpacked", "dist", "index.cjs");
+  const bundledJs = join(process.resourcesPath, "app.asar.unpacked", "dist", "index.js");
+  if (existsSync(localCjs)) return localCjs;
+  if (existsSync(bundledCjs)) return bundledCjs;
+  if (existsSync(localJs)) return localJs;
+  if (existsSync(bundledJs)) return bundledJs;
   return null;
 }
 
@@ -108,7 +112,7 @@ app.whenReady().then(async () => {
   if (!serverEntry) {
     dialog.showErrorBox(
       "Picxel",
-      "Could not find the production server build (dist/index.js). Run npm run build, then npm run build:electron, and start the desktop app again.",
+      "Could not find the production server build (dist/index.cjs). Run npm run build, then npm run build:electron, and start the desktop app again.",
     );
     app.quit();
     return;
