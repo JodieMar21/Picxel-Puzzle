@@ -459,15 +459,27 @@ function loadPackagedDesktopEnv() {
 }
 function startLocalServer(port, serverEntry) {
   const serverRoot = (0, import_path.dirname)((0, import_path.dirname)(serverEntry));
+  const env = {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+    PORT: String(port),
+    FRACTIX_DESKTOP: "1",
+    NODE_ENV: "production"
+  };
+  if (serverEntry.includes("app.asar.unpacked")) {
+    const asarNodeModules = (0, import_path.join)(process.resourcesPath, "app.asar", "node_modules");
+    const unpackedNodeModules = (0, import_path.join)(process.resourcesPath, "app.asar.unpacked", "node_modules");
+    const segments = [];
+    if ((0, import_fs.existsSync)(asarNodeModules)) segments.push(asarNodeModules);
+    if ((0, import_fs.existsSync)(unpackedNodeModules)) segments.push(unpackedNodeModules);
+    if (segments.length > 0) {
+      const prefix = segments.join(import_path.delimiter);
+      env.NODE_PATH = process.env.NODE_PATH ? `${prefix}${import_path.delimiter}${process.env.NODE_PATH}` : prefix;
+    }
+  }
   return (0, import_child_process.spawn)(process.execPath, [serverEntry], {
     cwd: serverRoot,
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: "1",
-      PORT: String(port),
-      FRACTIX_DESKTOP: "1",
-      NODE_ENV: "production"
-    },
+    env,
     stdio: ["ignore", "pipe", "pipe"]
   });
 }

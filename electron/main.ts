@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { config as loadEnvFile } from "dotenv";
 import { existsSync } from "fs";
-import { dirname, join } from "path";
+import { delimiter, dirname, join } from "path";
 import { spawn, type ChildProcess } from "child_process";
 
 let appWindow: BrowserWindow | null = null;
@@ -44,15 +44,33 @@ function loadPackagedDesktopEnv(): void {
 
 function startLocalServer(port: number, serverEntry: string): ChildProcess {
   const serverRoot = dirname(dirname(serverEntry));
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+    PORT: String(port),
+    FRACTIX_DESKTOP: "1",
+    NODE_ENV: "production",
+  };
+
+  // Hoisted deps (e.g. detect-libc for sharp) live under app.asar/node_modules while sharp is
+  // unpacked under app.asar.unpacked; NODE_PATH lets the embedded server resolve them.
+  if (serverEntry.includes("app.asar.unpacked")) {
+    const asarNodeModules = join(process.resourcesPath, "app.asar", "node_modules");
+    const unpackedNodeModules = join(process.resourcesPath, "app.asar.unpacked", "node_modules");
+    const segments: string[] = [];
+    if (existsSync(asarNodeModules)) segments.push(asarNodeModules);
+    if (existsSync(unpackedNodeModules)) segments.push(unpackedNodeModules);
+    if (segments.length > 0) {
+      const prefix = segments.join(delimiter);
+      env.NODE_PATH = process.env.NODE_PATH
+        ? `${prefix}${delimiter}${process.env.NODE_PATH}`
+        : prefix;
+    }
+  }
+
   return spawn(process.execPath, [serverEntry], {
     cwd: serverRoot,
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: "1",
-      PORT: String(port),
-      FRACTIX_DESKTOP: "1",
-      NODE_ENV: "production",
-    },
+    env,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }

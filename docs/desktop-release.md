@@ -5,24 +5,31 @@
 - Node.js 20+
 - Apple Developer account (for macOS signing/notarization)
 - Windows code-signing certificate (recommended)
-- Lemon Squeezy API key
 - PostgreSQL database available for production
 
-## 2) Required environment variables
+## 2) Required GitHub Actions secrets (desktop workflow)
 
-Set variables from `.env.example` plus signing secrets in CI:
+The desktop release workflow ([`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml)) writes [`electron-desktop-env/desktop.env`](../electron-desktop-env/desktop.env.example) from secrets before packaging. Ensure these repository secrets exist under **Settings → Secrets and variables → Actions**:
 
-- `DATABASE_URL`
-- `LEMON_SQUEEZY_API_KEY`
+**Embedded server / billing (written into `desktop.env`)**
+
+- `DATABASE_URL` — required for the packaged app to start the embedded API (empty values are skipped when writing the file; the server will fail if unset at runtime).
 - `LICENSE_SIGNING_SECRET`
-- `LICENSE_OFFLINE_DAYS`
-- `LICENSE_MAX_DEVICES`
-- `CSC_LINK`
-- `CSC_KEY_PASSWORD`
-- `APPLE_ID`
-- `APPLE_APP_SPECIFIC_PASSWORD`
-- `APPLE_TEAM_ID`
-- `GH_TOKEN` (required for `electron-builder` GitHub publish)
+- `APP_BASE_URL`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID`
+
+**Signing (platform-specific)**
+
+- `CSC_LINK` / `CSC_KEY_PASSWORD` (Windows code signing, when used)
+- `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` (macOS notarization)
+
+**Publishing installers**
+
+- `GH_TOKEN` — classic `repo` scope or fine-grained token with **Contents: Read and write** on this repository (required when publishing releases with `electron-builder`).
+
+For local packaging only, copy [`electron-desktop-env/desktop.env.example`](../electron-desktop-env/desktop.env.example) to `electron-desktop-env/desktop.env` and set at least `DATABASE_URL` (see also [`scripts/ensure-desktop-env.mjs`](../scripts/ensure-desktop-env.mjs), which creates a stub if the file is missing).
 
 ## 3) Local desktop build (package only)
 
