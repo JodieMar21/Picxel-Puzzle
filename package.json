@@ -2,6 +2,8 @@
   "name": "rest-express",
   "type": "module",
   "version": "1.0.0",
+  "description": "Fractix app (web and Electron desktop)",
+  "author": "JodieMar21",
   "main": "dist-electron/main.cjs",
   "license": "MIT",
   "imports": {
