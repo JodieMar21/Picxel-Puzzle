@@ -15,6 +15,9 @@ asarUnpack:
   - node_modules/dotenv/**/*
   # sharp loads native .node binaries — cannot run from inside app.asar
   - node_modules/sharp/**/*
+  # sharp requires detect-libc at load time; npm often hoists it to top-level node_modules
+  # (inside app.asar only), so unpacked sharp cannot resolve it unless we unpack it too.
+  - node_modules/detect-libc/**/*
   - node_modules/@img/**/*
   - node_modules/keytar/**/*
 extraResources:
