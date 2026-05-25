@@ -172,6 +172,8 @@ jobs:
     name: Publish GitHub Release
     needs: [build_windows, build_macos]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Tag or manual publish; at least one platform must succeed (partial release OK).
     if: |
       always() &&

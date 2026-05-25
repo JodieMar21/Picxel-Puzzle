@@ -73,6 +73,6 @@ Artifacts are generated in `release/`.
 
 ## 6) CI release
 
-- Tag with `v*` to trigger `.github/workflows/desktop-release.yml`.
+- Tag with `v*` to trigger [`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml).
 - Workflow builds on both macOS and Windows and uploads installer artifacts.
-- To publish from CI, store `GH_TOKEN` in repository secrets and expose it to the release job.
+- The **Publish GitHub Release** job needs `contents: write` on `GITHUB_TOKEN` (declared in the workflow). If releases still fail with 403, check **Settings → Actions → General → Workflow permissions** and choose **Read and write permissions**.
