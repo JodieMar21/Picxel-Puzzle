@@ -20,10 +20,12 @@ The desktop release workflow ([`.github/workflows/desktop-release.yml`](../.gith
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_ID`
 
-**Signing (platform-specific)**
+**Signing (optional — omit for unsigned CI builds)**
 
-- `CSC_LINK` / `CSC_KEY_PASSWORD` (Windows code signing, when used)
-- `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` (macOS notarization)
+- `CSC_LINK` / `CSC_KEY_PASSWORD` — code-signing certificate (macOS `.p12` or Windows `.pfx`, base64-encoded as a single line with no newlines). When these secrets are absent, CI builds unsigned installers.
+- `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` — macOS notarization (only needed when signing macOS builds for Gatekeeper-friendly distribution).
+
+The workflow only exports `CSC_LINK` to electron-builder when the secret is non-empty. GitHub Actions sets missing secrets to an empty string, not "unset"; passing `CSC_LINK=""` causes electron-builder to treat the repo root as a certificate path and fail with `not a file`.
 
 **Publishing installers**
 
