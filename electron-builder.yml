@@ -1,5 +1,5 @@
 appId: com.picxel.desktop
-productName: Picxel
+productName: Fractix
 directories:
   output: release
 files:

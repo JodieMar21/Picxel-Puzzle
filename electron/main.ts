@@ -129,7 +129,7 @@ app.whenReady().then(async () => {
   const serverEntry = resolveServerEntryPath();
   if (!serverEntry) {
     dialog.showErrorBox(
-      "Picxel",
+      "Fractix",
       "Could not find the production server build (dist/index.cjs). Run npm run build, then npm run build:electron, and start the desktop app again.",
     );
     app.quit();
@@ -159,7 +159,7 @@ app.whenReady().then(async () => {
     const hint =
       serverLog.trim().length > 0 ? `\n\nLast server output:\n${serverLog.trim()}` : "";
     dialog.showErrorBox(
-      "Picxel",
+      "Fractix",
       `The embedded server did not become ready on port ${port}. Ensure DATABASE_URL is set (e.g. via desktop.env from your build, or system environment), nothing else is using that port, and try again.${hint}`,
     );
     app.quit();
