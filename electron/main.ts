@@ -44,11 +44,13 @@ function loadPackagedDesktopEnv(): void {
 
 function startLocalServer(port: number, serverEntry: string): ChildProcess {
   const serverRoot = dirname(dirname(serverEntry));
+  const uploadDir = join(app.getPath("userData"), "uploads");
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
     PORT: String(port),
     FRACTIX_DESKTOP: "1",
+    FRACTIX_UPLOAD_DIR: uploadDir,
     NODE_ENV: "production",
   };
 

@@ -15,19 +15,24 @@ interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
 
-// Configure multer for file uploads
-const upload = multer({
-  dest: "uploads/",
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Invalid file type. Only JPEG and PNG are allowed."));
-    }
-  },
-});
+function resolveUploadDir(): string {
+  return process.env.FRACTIX_UPLOAD_DIR || process.env.UPLOAD_PATH || "uploads";
+}
+
+function createUploadMiddleware() {
+  return multer({
+    dest: resolveUploadDir(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only JPEG and PNG are allowed."));
+      }
+    },
+  });
+}
 
 // Custom brick color palette (39 colors) - exact RGB values from Excel chart
 const BRICK_COLORS = [
@@ -135,10 +140,11 @@ function findClosestBrickColor(rgb: [number, number, number]): { name: string; h
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Ensure uploads directory exists
-  if (!fs.existsSync("uploads")) {
-    fs.mkdirSync("uploads");
+  const uploadDir = resolveUploadDir();
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
   }
+  const upload = createUploadMiddleware();
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
