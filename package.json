@@ -19,6 +19,9 @@
     "build:electron": "npx esbuild electron/main.ts electron/preload.ts --platform=node --bundle --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:keytar --external:electron",
     "build:desktop": "node scripts/ensure-desktop-env.mjs && npm run build && npm run build:electron && electron-builder --publish never",
     "build:desktop:publish": "node scripts/ensure-desktop-env.mjs && npm run build && npm run build:electron && electron-builder --publish always",
+    "build:client": "npx vite build",
+    "build:ios": "node scripts/build-ios.mjs",
+    "cap:sync": "npx cap sync ios",
     "start": "NODE_ENV=production node dist/index.cjs",
     "start:desktop": "cross-env ELECTRON_IS_DEV=0 electron dist-electron/main.cjs",
     "check": "tsc",
@@ -102,6 +105,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.7",
+    "@capacitor/core": "^7.6.7",
+    "@capacitor/ios": "^7.6.7",
     "@replit/vite-plugin-cartographer": "^0.2.7",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.19",

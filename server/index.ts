@@ -39,6 +39,10 @@ function collectCorsOrigins(): Set<string> {
       allowed.add(o);
     }
   }
+  // Capacitor native shells (iPad/iPhone app loads bundled SPA from capacitor://localhost)
+  for (const o of ["capacitor://localhost", "ionic://localhost"]) {
+    allowed.add(o);
+  }
   return allowed;
 }
 

@@ -31,6 +31,14 @@ The workflow only exports `CSC_LINK` to electron-builder when the secret is non-
 
 - `GH_TOKEN` — classic `repo` scope or fine-grained token with **Contents: Read and write** on this repository (required when publishing releases with `electron-builder`).
 
+**iPad / iOS (Capacitor build)**
+
+- `APPLE_TEAM_ID` — required for the iOS job (`build_ios`) to export a signed `.ipa`.
+- `CSC_LINK` / `CSC_KEY_PASSWORD` — same Apple `.p12` used for macOS signing (imported in CI before `xcodebuild`).
+- `VITE_API_URL` — optional; Railway public API URL baked into the iPad app (defaults to production Railway URL in `scripts/build-ios.mjs`).
+- Register bundle ID **`com.picxel.ios`** in Apple Developer before the first iOS CI build.
+- On Railway, set `CORS_ALLOWED_ORIGINS` to include `capacitor://localhost` (or redeploy after the server CORS update in this repo).
+
 For local packaging only, copy [`electron-desktop-env/desktop.env.example`](../electron-desktop-env/desktop.env.example) to `electron-desktop-env/desktop.env` and set at least `DATABASE_URL` (see also [`scripts/ensure-desktop-env.mjs`](../scripts/ensure-desktop-env.mjs), which creates a stub if the file is missing).
 
 ## 3) Local desktop build (package only)
@@ -74,5 +82,5 @@ Artifacts are generated in `release/`.
 ## 6) CI release
 
 - Tag with `v*` to trigger [`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml).
-- Workflow builds on both macOS and Windows and uploads installer artifacts.
+- Workflow builds Windows, macOS, and **iPad/iOS** (Capacitor `.ipa`) and uploads installer artifacts.
 - The **Publish GitHub Release** job needs `contents: write` on `GITHUB_TOKEN` (declared in the workflow). If releases still fail with 403, check **Settings → Actions → General → Workflow permissions** and choose **Read and write permissions**.

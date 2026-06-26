@@ -173,9 +173,47 @@ jobs:
           name: fractix-macos-latest
           path: release/**
 
+  build_ios:
+    name: Build iPad/iOS app (Capacitor)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import code signing certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.CSC_LINK }}
+          p12-password: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Build iOS IPA
+        run: npm run build:ios
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Debug iOS release contents
+        run: find release -type f | sort || echo "Nothing in release/"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fractix-ios-latest
+          path: release/*.ipa
+
   release:
     name: Publish GitHub Release
-    needs: [build_windows, build_macos]
+    needs: [build_windows, build_macos, build_ios]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -184,7 +222,8 @@ jobs:
       always() &&
       (
         needs.build_windows.result == 'success' ||
-        needs.build_macos.result == 'success'
+        needs.build_macos.result == 'success' ||
+        needs.build_ios.result == 'success'
       ) &&
       (
         startsWith(github.ref, 'refs/tags/v') ||
@@ -206,6 +245,13 @@ jobs:
           name: fractix-macos-latest
           path: release/macos
 
+      - name: Download iOS artifacts
+        if: needs.build_ios.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: fractix-ios-latest
+          path: release/ios
+
       - name: Debug release folder contents
         run: |
           echo "=== Full release/ tree ==="
@@ -219,6 +265,7 @@ jobs:
             -name '*.exe' -o \
             -name '*.dmg' -o \
             -name '*.zip' -o \
+            -name '*.ipa' -o \
             -name '*.AppImage' -o \
             -name '*.deb' -o \
             -name '*.rpm' -o \
