@@ -33,8 +33,8 @@ The workflow only exports `CSC_LINK` to electron-builder when the secret is non-
 
 **iPad / iOS (Capacitor build)**
 
-- `APPLE_TEAM_ID` — required for the iOS job (`build_ios`) to export a signed `.ipa`.
-- `CSC_LINK` / `CSC_KEY_PASSWORD` — same Apple `.p12` used for macOS signing (imported in CI before `xcodebuild`).
+- `APPLE_TEAM_ID` — required when `CSC_LINK` is set (signed `.ipa` for physical iPad/iPhone).
+- `CSC_LINK` / `CSC_KEY_PASSWORD` — optional; when absent, CI builds an **unsigned iOS Simulator** `.zip` instead of a device `.ipa`.
 - `VITE_API_URL` — optional; Railway public API URL baked into the iPad app (defaults to production Railway URL in `scripts/build-ios.mjs`).
 - Register bundle ID **`com.picxel.ios`** in Apple Developer before the first iOS CI build.
 - On Railway, set `CORS_ALLOWED_ORIGINS` to include `capacitor://localhost` (or redeploy after the server CORS update in this repo).
