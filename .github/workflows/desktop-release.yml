@@ -71,12 +71,16 @@ jobs:
         run: |
           if [[ -n "${CSC_LINK_RAW:-}" ]]; then
             echo "Signing enabled (CSC_LINK present)"
-            # Use Node.js to decode — it handles any whitespace in the base64
-            # string and writes binary data correctly on every platform.
+            # Use Node.js to decode. Handles both raw base64 AND the
+            # data:application/x-pkcs12;base64,<b64> URI that electron-builder
+            # documents as an accepted CSC_LINK format.
             CERT_OUT_PATH="$FRACTIX_CERT_PATH" node -e "
               const fs = require('fs');
-              const raw = (process.env.CSC_LINK_RAW || '').replace(/\s/g, '');
-              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(raw, 'base64'));
+              const val = (process.env.CSC_LINK_RAW || '').trim();
+              const b64 = val.startsWith('data:')
+                ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
+                : val.replace(/\s/g, '');
+              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
             "
             echo "CSC_LINK=$FRACTIX_CERT_PATH" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=${CSC_KEY_PASSWORD_RAW:-}" >> "$GITHUB_ENV"
@@ -166,12 +170,16 @@ jobs:
         run: |
           if [[ -n "${CSC_LINK_RAW:-}" ]]; then
             echo "Signing enabled (CSC_LINK present)"
-            # Use Node.js to decode — it handles any whitespace in the base64
-            # string and writes binary data correctly on every platform.
+            # Use Node.js to decode. Handles both raw base64 AND the
+            # data:application/x-pkcs12;base64,<b64> URI that electron-builder
+            # documents as an accepted CSC_LINK format.
             CERT_OUT_PATH="$FRACTIX_CERT_PATH" node -e "
               const fs = require('fs');
-              const raw = (process.env.CSC_LINK_RAW || '').replace(/\s/g, '');
-              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(raw, 'base64'));
+              const val = (process.env.CSC_LINK_RAW || '').trim();
+              const b64 = val.startsWith('data:')
+                ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
+                : val.replace(/\s/g, '');
+              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
             "
             export CSC_LINK="$FRACTIX_CERT_PATH"
             export CSC_KEY_PASSWORD="${CSC_KEY_PASSWORD_RAW:-}"
@@ -232,21 +240,23 @@ jobs:
         env:
           P12_BASE64: ${{ secrets.CSC_LINK }}
           P12_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Fixed path with .p12 extension — avoids mktemp's macOS suffix-append
+          # bug that strips the extension and breaks security import auto-detect.
+          CERT_PATH: ${{ runner.temp }}/fractix-ios-signing.p12
         run: |
           KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-          CERT_PATH=$(mktemp -t cert.XXXXXX.p12)
 
-          # Strip any whitespace/newlines the secret may contain before decoding
-          printf '%s' "$P12_BASE64" | tr -d '\n\r ' | base64 --decode > "$CERT_PATH"
-
-          # Verify the decoded file is a valid PKCS12 before importing
-          if ! openssl pkcs12 -in "$CERT_PATH" -passin "pass:${P12_PASSWORD}" \
-              -nokeys -noout 2>/dev/null; then
-            echo "::error::P12 certificate failed OpenSSL validation. Check that CSC_LINK is a" \
-              "raw base64-encoded .p12 file and CSC_KEY_PASSWORD matches its export password."
-            rm -f "$CERT_PATH"
-            exit 1
-          fi
+          # Use Node.js to decode — handles both raw base64 and the
+          # data:application/x-pkcs12;base64,<b64> data URI format.
+          # Avoids the macOS base64 binary's lack of --decode support.
+          CERT_OUT_PATH="$CERT_PATH" node -e "
+            const fs = require('fs');
+            const val = (process.env.P12_BASE64 || '').trim();
+            const b64 = val.startsWith('data:')
+              ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
+              : val.replace(/\s/g, '');
+            fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
+          "
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" signing_temp.keychain
           security set-keychain-settings -lut 21600 signing_temp.keychain
