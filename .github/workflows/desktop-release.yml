@@ -64,7 +64,12 @@ jobs:
         run: |
           if [[ -n "${CSC_LINK_RAW:-}" ]]; then
             echo "Signing enabled (CSC_LINK present)"
-            echo "CSC_LINK=$CSC_LINK_RAW" >> "$GITHUB_ENV"
+            # Decode the base64-encoded p12 to a real file so electron-builder
+            # receives a valid filesystem path instead of a raw base64 string.
+            CERT_PATH="$RUNNER_TEMP/signing_cert.p12"
+            printf '%s' "$CSC_LINK_RAW" | tr -d '\n\r ' \
+              | openssl enc -base64 -d -A -out "$CERT_PATH"
+            echo "CSC_LINK=$CERT_PATH" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=${CSC_KEY_PASSWORD_RAW:-}" >> "$GITHUB_ENV"
           else
             echo "No signing certificate; building unsigned"
@@ -142,13 +147,19 @@ jobs:
         run: |
           if [[ -n "${CSC_LINK_RAW:-}" ]]; then
             echo "Signing enabled (CSC_LINK present)"
-            export CSC_LINK="$CSC_LINK_RAW"
+            # Decode the base64-encoded p12 to a real file so electron-builder
+            # receives a valid filesystem path instead of a raw base64 string.
+            CERT_PATH=$(mktemp -t signing_cert.XXXXXX.p12)
+            printf '%s' "$CSC_LINK_RAW" | tr -d '\n\r ' \
+              | openssl enc -base64 -d -A -out "$CERT_PATH"
+            export CSC_LINK="$CERT_PATH"
             export CSC_KEY_PASSWORD="${CSC_KEY_PASSWORD_RAW:-}"
           else
             echo "No signing certificate; building unsigned"
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           npm run build:desktop
+          [ -n "${CERT_PATH:-}" ] && rm -f "$CERT_PATH" || true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
