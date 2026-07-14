@@ -22,3 +22,7 @@ export async function validateLicense(input: {
 export async function deactivateLicense(input: { entitlement: string; deviceId: string }): Promise<void> {
   await apiRequest("POST", "/api/license/deactivate", input);
 }
+
+export async function deactivateAllDevices(input: { entitlement: string; deviceId: string }): Promise<void> {
+  await apiRequest("POST", "/api/license/deactivate-all", input);
+}

@@ -180,6 +180,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/license/deactivate-all", async (req, res) => {
+    try {
+      const payload = deactivateLicenseSchema.parse(req.body);
+      await licenseService.deactivateAll(payload);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "License deactivation failed." });
+    }
+  });
+
   // Stripe checkout session creation
   app.post("/api/checkout", async (req, res) => {
     try {

@@ -19,6 +19,7 @@ export interface IStorage {
     isActive?: boolean;
   }): Promise<typeof licenseActivations.$inferSelect>;
   deactivateLicenseActivation(licenseKeyHash: string, deviceId: string): Promise<void>;
+  deactivateAllLicenseActivations(licenseKeyHash: string): Promise<void>;
   createLicenseEvent(input: {
     licenseKeyHash: string;
     deviceId?: string;
@@ -128,6 +129,16 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(and(eq(licenseActivations.licenseKeyHash, licenseKeyHash), eq(licenseActivations.deviceId, deviceId)));
+  }
+
+  async deactivateAllLicenseActivations(licenseKeyHash: string): Promise<void> {
+    await db
+      .update(licenseActivations)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(licenseActivations.licenseKeyHash, licenseKeyHash));
   }
 
   async createLicenseEvent(input: {

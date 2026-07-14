@@ -1,4 +1,4 @@
-import { FormEvent, PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { createContext, FormEvent, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,26 @@ import { Separator } from "@/components/ui/separator";
 import { ExternalLink, Loader2, ShieldCheck } from "lucide-react";
 import { apiUrl } from "@/lib/apiBase";
 import { configureLicenseHeaders } from "@/lib/queryClient";
-import { activateLicense, deactivateLicense, validateLicense } from "./api";
+import { activateLicense, deactivateLicense, deactivateAllDevices, validateLicense } from "./api";
 import { getDeviceId, getDeviceName } from "./device";
 import { clearStoredEntitlement, getStoredEntitlement, saveStoredEntitlement } from "./storage";
 import type { LicenseEntitlement } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+
+interface LicenseContextValue {
+  entitlement: LicenseEntitlement | null;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
+}
+
+const LicenseContext = createContext<LicenseContextValue | null>(null);
+
+export function useLicense(): LicenseContextValue {
+  const ctx = useContext(LicenseContext);
+  if (!ctx) throw new Error("useLicense must be used inside LicenseGate");
+  return ctx;
+}
 
 export default function LicenseGate({ children }: PropsWithChildren) {
   const deviceId = useMemo(() => getDeviceId(), []);
@@ -138,6 +152,20 @@ export default function LicenseGate({ children }: PropsWithChildren) {
     }
   };
 
+  const handleDeactivateAll = async () => {
+    if (!entitlement) return;
+    setIsSubmitting(true);
+    try {
+      await deactivateAllDevices({ entitlement: entitlement.entitlement, deviceId });
+    } catch (_error) {
+      // Still clear local state so the user returns to the activation screen.
+    } finally {
+      await clearStoredEntitlement();
+      setEntitlement(null);
+      setIsSubmitting(false);
+    }
+  };
+
   const handleBuyLicense = async () => {
     setIsBuying(true);
     setErrorMessage(null);
@@ -240,7 +268,7 @@ export default function LicenseGate({ children }: PropsWithChildren) {
   }
 
   return (
-    <>
+    <LicenseContext.Provider value={{ entitlement, logout: handleDeactivate, logoutAll: handleDeactivateAll }}>
       {errorMessage && (
         <div className="bg-amber-100 border-b border-amber-300 text-amber-900 text-sm px-4 py-2 flex items-center justify-between">
           <span>{errorMessage}</span>
@@ -250,6 +278,6 @@ export default function LicenseGate({ children }: PropsWithChildren) {
         </div>
       )}
       {children}
-    </>
+    </LicenseContext.Provider>
   );
 }

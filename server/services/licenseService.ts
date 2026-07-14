@@ -154,4 +154,18 @@ export const licenseService = {
       eventType: "deactivated",
     });
   },
+
+  async deactivateAll(input: { entitlement: string; deviceId: string }) {
+    const payload = verifyEntitlement(input.entitlement);
+    if (payload.deviceId !== input.deviceId) {
+      throw new Error("Entitlement does not belong to this device.");
+    }
+
+    await storage.deactivateAllLicenseActivations(payload.licenseKeyHash);
+    await storage.createLicenseEvent({
+      licenseKeyHash: payload.licenseKeyHash,
+      deviceId: input.deviceId,
+      eventType: "deactivated_all",
+    });
+  },
 };

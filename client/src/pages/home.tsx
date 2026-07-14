@@ -2,11 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { Box, Settings, HelpCircle, FolderOpen } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ImageUpload from "@/components/image-upload";
 import BoardConfiguration from "@/components/board-configuration";
 import ColorPalette from "@/components/color-palette";
 import ProcessingView from "@/components/processing-view";
 import ResultsView from "@/components/results-view";
+import ProfileModal from "@/components/profile-modal";
+import { getProfile } from "@/features/profile/storage";
 import type { PixelationResult } from "@shared/schema";
 
 export default function Home() {
@@ -23,6 +26,8 @@ export default function Home() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLButtonElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState(() => getProfile());
 
   // Add these for Help dropdown
   const [helpOpen, setHelpOpen] = useState(false);
@@ -164,10 +169,34 @@ export default function Home() {
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label="Open profile"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profileData?.avatarDataUrl ?? undefined} alt="Profile" />
+                  <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
+                    {profileData?.name
+                      ? profileData.name.slice(0, 2).toUpperCase()
+                      : profileData?.username
+                        ? profileData.username.slice(0, 2).toUpperCase()
+                        : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
             </div>
           </div>
         </div>
       </header>
+
+      <ProfileModal
+        open={profileOpen}
+        onOpenChange={(o) => {
+          setProfileOpen(o);
+          if (!o) setProfileData(getProfile());
+        }}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Process Steps */}
