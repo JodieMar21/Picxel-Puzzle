@@ -56,39 +56,6 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
 
-
-      # CSC env only — do not run electron-builder/npm rebuild in bash on Windows:
-      # node-gyp cannot locate Visual Studio from Git Bash and fails on bufferutil/keytar/sharp.
-      - name: Configure code signing env
-        shell: bash
-        env:
-          CSC_LINK_RAW: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD_RAW: ${{ secrets.CSC_KEY_PASSWORD }}
-          # Use runner.temp so the resolved path is the OS-native temp dir
-          # (backslashes on Windows), which electron-builder and security import
-          # both understand without any Git Bash path conversion.
-          FRACTIX_CERT_PATH: ${{ runner.temp }}/fractix-signing.p12
-        run: |
-          if [[ -n "${CSC_LINK_RAW:-}" ]]; then
-            echo "Signing enabled (CSC_LINK present)"
-            # Use Node.js to decode. Handles both raw base64 AND the
-            # data:application/x-pkcs12;base64,<b64> URI that electron-builder
-            # documents as an accepted CSC_LINK format.
-            CERT_OUT_PATH="$FRACTIX_CERT_PATH" node -e "
-              const fs = require('fs');
-              const val = (process.env.CSC_LINK_RAW || '').trim();
-              const b64 = val.startsWith('data:')
-                ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
-                : val.replace(/\s/g, '');
-              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
-            "
-            echo "CSC_LINK=$FRACTIX_CERT_PATH" >> "$GITHUB_ENV"
-            echo "CSC_KEY_PASSWORD=${CSC_KEY_PASSWORD_RAW:-}" >> "$GITHUB_ENV"
-          else
-            echo "No signing certificate; building unsigned"
-            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
-          fi
-
       - name: Build desktop packages
         run: npm run build:desktop
         env:
@@ -98,9 +65,8 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Build unsigned — code signing is reserved for the iOS pipeline only.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Debug Windows release contents
         run: |
@@ -151,9 +117,8 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
 
-
       - name: Build desktop packages
-        shell: bash
+        run: npm run build:desktop
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
@@ -161,34 +126,8 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_LINK_RAW: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD_RAW: ${{ secrets.CSC_KEY_PASSWORD }}
-          FRACTIX_CERT_PATH: ${{ runner.temp }}/fractix-signing.p12
-        run: |
-          if [[ -n "${CSC_LINK_RAW:-}" ]]; then
-            echo "Signing enabled (CSC_LINK present)"
-            # Use Node.js to decode. Handles both raw base64 AND the
-            # data:application/x-pkcs12;base64,<b64> URI that electron-builder
-            # documents as an accepted CSC_LINK format.
-            CERT_OUT_PATH="$FRACTIX_CERT_PATH" node -e "
-              const fs = require('fs');
-              const val = (process.env.CSC_LINK_RAW || '').trim();
-              const b64 = val.startsWith('data:')
-                ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
-                : val.replace(/\s/g, '');
-              fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
-            "
-            export CSC_LINK="$FRACTIX_CERT_PATH"
-            export CSC_KEY_PASSWORD="${CSC_KEY_PASSWORD_RAW:-}"
-          else
-            echo "No signing certificate; building unsigned"
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
-          npm run build:desktop
-          [ -f "${FRACTIX_CERT_PATH:-}" ] && rm -f "$FRACTIX_CERT_PATH" || true
+          # Build unsigned — code signing is reserved for the iOS pipeline only.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Debug macOS release contents
         run: |
@@ -201,106 +140,9 @@ jobs:
           name: fractix-macos-latest
           path: release/**
 
-  build_ios:
-    name: Build iPad/iOS app (Capacitor)
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Configure iOS signing
-        id: ios_signing
-        shell: bash
-        run: |
-          if [[ -n "${CSC_LINK_RAW:-}" ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "IOS_SIGNING_ENABLED=true" >> "$GITHUB_ENV"
-            echo "Signing enabled (CSC_LINK present) — building device .ipa"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "IOS_SIGNING_ENABLED=false" >> "$GITHUB_ENV"
-            echo "No CSC_LINK — skipping cert import; building unsigned iOS Simulator .zip"
-          fi
-        env:
-          CSC_LINK_RAW: ${{ secrets.CSC_LINK }}
-
-      - name: Import code signing certificate
-        if: steps.ios_signing.outputs.enabled == 'true'
-        shell: bash
-        env:
-          P12_BASE64: ${{ secrets.CSC_LINK }}
-          P12_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # Fixed path with .p12 extension — avoids mktemp's macOS suffix-append
-          # bug that strips the extension and breaks security import auto-detect.
-          CERT_PATH: ${{ runner.temp }}/fractix-ios-signing.p12
-        run: |
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-
-          # Use Node.js to decode — handles both raw base64 and the
-          # data:application/x-pkcs12;base64,<b64> data URI format.
-          # Avoids the macOS base64 binary's lack of --decode support.
-          CERT_OUT_PATH="$CERT_PATH" node -e "
-            const fs = require('fs');
-            const val = (process.env.P12_BASE64 || '').trim();
-            const b64 = val.startsWith('data:')
-              ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
-              : val.replace(/\s/g, '');
-            fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
-          "
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" signing_temp.keychain
-          security set-keychain-settings -lut 21600 signing_temp.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" signing_temp.keychain
-
-          security import "$CERT_PATH" \
-            -k signing_temp.keychain \
-            -f pkcs12 \
-            -A \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security \
-            -P "$P12_PASSWORD"
-
-          # Allow codesign to access the key without prompting
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$KEYCHAIN_PASSWORD" signing_temp.keychain
-
-          # Prepend the temp keychain to the user search list
-          EXISTING=$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')
-          security list-keychains -d user -s signing_temp.keychain $EXISTING
-
-          rm -f "$CERT_PATH"
-
-      - name: Build iOS artifact
-        run: npm run build:ios
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      - name: Debug iOS release contents
-        run: find release -type f | sort || echo "Nothing in release/"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: fractix-ios-latest
-          path: |
-            release/*.ipa
-            release/*.zip
-
   release:
     name: Publish GitHub Release
-    needs: [build_windows, build_macos, build_ios]
+    needs: [build_windows, build_macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -309,8 +151,7 @@ jobs:
       always() &&
       (
         needs.build_windows.result == 'success' ||
-        needs.build_macos.result == 'success' ||
-        needs.build_ios.result == 'success'
+        needs.build_macos.result == 'success'
       ) &&
       (
         startsWith(github.ref, 'refs/tags/v') ||
@@ -332,13 +173,6 @@ jobs:
           name: fractix-macos-latest
           path: release/macos
 
-      - name: Download iOS artifacts
-        if: needs.build_ios.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: fractix-ios-latest
-          path: release/ios
-
       - name: Debug release folder contents
         run: |
           echo "=== Full release/ tree ==="
@@ -352,8 +186,6 @@ jobs:
             -name '*.exe' -o \
             -name '*.dmg' -o \
             -name '*.zip' -o \
-            -name '*.ipa' -o \
-            -name '*-ios-simulator.zip' -o \
             -name '*.AppImage' -o \
             -name '*.deb' -o \
             -name '*.rpm' -o \
