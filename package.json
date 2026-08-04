@@ -9,6 +9,7 @@
   "imports": {
     "picxel-vite-dev": "./server/vite-dev.ts"
   },
+  
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:web": "NODE_ENV=development tsx server/index.ts",

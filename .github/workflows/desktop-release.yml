@@ -124,7 +124,7 @@ jobs:
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}   
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           # Build unsigned — code signing is reserved for the iOS pipeline only.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
