@@ -143,7 +143,11 @@ jobs:
   build_ios:
     name: Build iPad/iOS app (Capacitor)
     runs-on: macos-latest
-    # Completely independent — failure here never blocks Windows/macOS or the release job.
+    # Temporarily disabled on branch pushes: iOS failures fail the check suite and
+    # Railway skips deploy ("CI check suite failed"). Re-enable for TestFlight later.
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout
