@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import SettingsMenu from "@/components/settings-menu";
+import StudioShell from "@/components/studio-shell";
 import { apiUrl } from "@/lib/apiBase";
 import { queryClient, getCurrentLicenseHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -129,51 +129,44 @@ export default function Projects() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg">Loading your projects...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Filter for projects that have been processed and saved with pixelation results
   const completedProjects = projects.filter(p => {
-    console.log('Project filter check:', { id: p.id, status: p.status, hasPixelationResult: !!p.pixelationResult, hasColorData: !!p.colorData });
     return p.status === 'completed' && (p.pixelationResult || p.colorData);
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Your Projects</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Manage and download your saved pixelation projects
-              </p>
-            </div>
-          </div>
-          <SettingsMenu />
+    <StudioShell
+      headerLeft={
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="gap-2 -ml-2">
+              <ArrowLeft className="w-4 h-4" />
+              Studio
+            </Button>
+          </Link>
         </div>
+      }
+    >
+      <div className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <p className="text-sm font-semibold tracking-wide text-primary mb-2">Your library</p>
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+          Your Projects
+        </h1>
+        <p className="mt-3 text-muted-foreground max-w-xl">
+          Manage and download your saved mosaic projects.
+        </p>
+      </div>
 
-        {completedProjects.length === 0 ? (
-          <Card>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64 rounded-2xl border border-border bg-card/60">
+          <div className="text-muted-foreground">Loading your projects…</div>
+        </div>
+      ) : completedProjects.length === 0 ? (
+          <Card className="rounded-2xl border-border bg-card/70 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
                 <h3 className="text-lg font-semibold mb-2">No saved projects yet</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Create your first pixelation project to see it here.
                 </p>
                 <Link href="/">
@@ -183,16 +176,16 @@ export default function Projects() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-3 duration-700">
             {completedProjects.map((project) => (
-              <Card key={project.id} className="hover:shadow-lg transition-shadow">
+              <Card key={project.id} className="rounded-2xl border-border bg-card/70 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold truncate">
                         {project.name}
                       </CardTitle>
-                      <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         {new Date(project.createdAt || '').toLocaleDateString()}
                       </div>
@@ -214,13 +207,13 @@ export default function Projects() {
                       <img 
                         src={project.pixelationResult.pixelatedImageData}
                         alt={project.name}
-                        className="w-full h-32 object-cover rounded border"
+                        className="w-full h-32 object-cover rounded-xl border border-border"
                       />
                     </div>
                   )}
 
                   {project.pixelationResult && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <div className="text-sm text-muted-foreground mb-4">
                       <div>Total tiles: {project.pixelationResult.totalTiles?.toLocaleString()}</div>
                       <div>Colours used: {project.pixelationResult.colorMap?.length || 0}</div>
                     </div>
@@ -404,7 +397,6 @@ export default function Projects() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+    </StudioShell>
   );
 }

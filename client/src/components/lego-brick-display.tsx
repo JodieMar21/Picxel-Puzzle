@@ -150,14 +150,14 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
   // Normal mode - full component with container
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-lg p-4 border">
-        <h4 className="text-md font-medium text-gray-900 mb-3">Brick View</h4>
-        <p className="text-sm text-gray-600 mb-4">
+      <div className="rounded-2xl p-4 border border-border bg-card/70">
+        <h4 className="text-md font-medium text-foreground mb-3">Brick View</h4>
+        <p className="text-sm text-muted-foreground mb-4">
           Each circle represents one tile stud. Build your mosaic by placing tiles according to this pattern.
         </p>
         
         <div 
-          className={`overflow-auto max-h-96 border rounded ${onClick ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+          className={`overflow-auto max-h-96 border rounded ${onClick ? 'cursor-pointer hover:bg-muted/40 transition-colors' : ''}`}
           onClick={onClick}
           title={onClick ? "Click to expand full view" : undefined}
         >
@@ -172,7 +172,7 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
           />
         </div>
         
-        <div className="mt-3 text-xs text-gray-500">
+        <div className="mt-3 text-xs text-muted-foreground">
           <p>• Each circular stud = 1 tile</p>
           <p>
             • Black borders show board boundaries (

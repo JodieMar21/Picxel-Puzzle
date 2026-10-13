@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ExternalLink, Loader2, ShieldCheck } from "lucide-react";
+import StudioAtmosphere from "@/components/studio-atmosphere";
 import { apiUrl } from "@/lib/apiBase";
 import { configureLicenseHeaders } from "@/lib/queryClient";
 import { activateLicense, deactivateLicense, deactivateAllDevices, validateLicense } from "./api";
@@ -194,18 +195,26 @@ export default function LicenseGate({ children }: PropsWithChildren) {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Checking license...</div>;
+    return (
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex items-center justify-center">
+        <StudioAtmosphere />
+        <p className="text-muted-foreground relative z-10">Checking license…</p>
+      </div>
+    );
   }
 
   if (!entitlement) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex items-center justify-center p-6">
+        <StudioAtmosphere />
+        <Card className="w-full max-w-md relative z-10 rounded-2xl border-border bg-card/80 backdrop-blur-md shadow-lg">
           <CardHeader className="pb-2 text-center">
             <div className="flex justify-center mb-3">
-              <ShieldCheck className="h-10 w-10 text-blue-600" />
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                <ShieldCheck className="h-7 w-7" />
+              </div>
             </div>
-            <CardTitle className="text-2xl">Activate Fractix</CardTitle>
+            <CardTitle className="text-2xl tracking-tight">Activate Fractix</CardTitle>
             <CardDescription>Enter your license key to get started</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 pt-2">
@@ -217,16 +226,16 @@ export default function LicenseGate({ children }: PropsWithChildren) {
                   value={licenseKey}
                   onChange={(event) => setLicenseKey(event.target.value)}
                   placeholder="FRACTIX-XXXX-XXXX-XXXX-XXXX"
-                  className="font-mono tracking-wide"
+                  className="font-mono tracking-wide rounded-xl"
                   required
                 />
               </div>
               {errorMessage && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2">
                   {errorMessage}
                 </p>
               )}
-              <Button type="submit" className="w-full" disabled={isSubmitting || isBuying}>
+              <Button type="submit" className="w-full rounded-xl" disabled={isSubmitting || isBuying}>
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Activating…</>
                 ) : (
@@ -237,17 +246,17 @@ export default function LicenseGate({ children }: PropsWithChildren) {
 
             <div className="relative">
               <Separator />
-              <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-slate-400 uppercase tracking-wider">
+              <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground uppercase tracking-wider">
                 or
               </span>
             </div>
 
             <div className="space-y-3 text-center">
-              <p className="text-sm text-slate-500">Don't have a license yet?</p>
+              <p className="text-sm text-muted-foreground">Don't have a license yet?</p>
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-xl"
                 onClick={handleBuyLicense}
                 disabled={isBuying || isSubmitting}
               >
@@ -257,7 +266,7 @@ export default function LicenseGate({ children }: PropsWithChildren) {
                   <><ExternalLink className="mr-2 h-4 w-4" />Buy a license</>
                 )}
               </Button>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Each license activates on up to 2 devices.
               </p>
             </div>

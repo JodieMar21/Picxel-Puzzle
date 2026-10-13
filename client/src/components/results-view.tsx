@@ -9,9 +9,9 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useToast } from "@/hooks/use-toast";
 import LegoBrickDisplay from "./lego-brick-display";
 import PixelEditor from "./pixel-editor";
+import FractixLoader from "./fractix-loader";
 import type { PixelationResult } from "@shared/schema";
-import { calculateEstimatedBuildTime, getDifficultyLevel, downloadImageAsFile, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
-import { useAppSettings } from "@/features/settings/use-app-settings";
+import { calculateEstimatedBuildTime, getDifficultyLevel, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 
@@ -28,7 +28,6 @@ interface ResultsViewProps {
 
 export default function ResultsView({ results, boardCount, boardLayout, boardRows, boardCols, projectId, onGoBack }: ResultsViewProps) {
   const { toast } = useToast();
-  const { settings } = useAppSettings();
   const { pixelatedImageData, colorMap, boards, totalTiles } = results;
   const [isEditing, setIsEditing] = useState(false);
   const [editedResults, setEditedResults] = useState<PixelationResult>(results);
@@ -74,12 +73,17 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
     const ctx = canvas.getContext('2d');
     if (!ctx) return editedResults.pixelatedImageData;
 
+    const boardTileSize =
+      editedResults.boardTileSize ??
+      editedResults.boards[0]?.pixels?.length ??
+      32;
+
     // Calculate total dimensions
     const totalCols = Math.max(...editedResults.boards.map(b => b.position.col + 1));
     const totalRows = Math.max(...editedResults.boards.map(b => b.position.row + 1));
     
-    canvas.width = totalCols * 32;
-    canvas.height = totalRows * 32;
+    canvas.width = totalCols * boardTileSize;
+    canvas.height = totalRows * boardTileSize;
 
     // Fill with white background
     ctx.fillStyle = '#FFFFFF';
@@ -87,8 +91,8 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
 
     // Draw each board
     editedResults.boards.forEach(board => {
-      const boardStartX = board.position.col * 32;
-      const boardStartY = board.position.row * 32;
+      const boardStartX = board.position.col * boardTileSize;
+      const boardStartY = board.position.row * boardTileSize;
 
       board.pixels.forEach((row, y) => {
         row.forEach((color, x) => {
@@ -101,14 +105,33 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
     return canvas.toDataURL('image/png');
   };
 
-  const handleDownloadImage = () => {
+  const handleDownloadImage = async () => {
     try {
-      const imageData = generateEditedImageData();
-      console.log('Generated image data for download:', imageData ? 'success' : 'failed');
-      downloadImageAsFile(imageData, 'pixelated-brick-image.png');
+      const imageData =
+        generateEditedImageData() ||
+        editedResults.pixelatedImageData ||
+        pixelatedImageData;
+
+      if (!imageData) {
+        throw new Error('No image data available to download.');
+      }
+
+      const { saveImageWithDialog } = await import('@/lib/file-saver');
+      const saved = await saveImageWithDialog(imageData, 'fractix-mosaic.png');
+      if (saved) {
+        toast({
+          title: 'PNG downloaded',
+          description: 'Your mosaic image has been saved.',
+        });
+      }
     } catch (error) {
-      console.error('Error downloading image. Please try again.');
-      alert('Failed to download image. Please try again.');
+      console.error('Error downloading image:', error);
+      toast({
+        title: 'Download failed',
+        description:
+          error instanceof Error ? error.message : 'Failed to download PNG. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -250,7 +273,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-gray-900">Pixel Editor</h2>
+          <h2 className="text-2xl font-semibold text-foreground">Pixel Editor</h2>
           <Button 
             variant="outline" 
             onClick={() => setIsEditing(false)}
@@ -269,7 +292,16 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {saveToAppMutation.isPending && (
+        <FractixLoader
+          title="Saving to Fractix"
+          subtitle="Storing your mosaic in My Projects"
+          statusLabel="Saving your mosaic…"
+          animateProgress
+        />
+      )}
+
       {/* Header with Back Button and Mode Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -279,12 +311,13 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
               size="sm"
               onClick={onGoBack}
               className="flex items-center space-x-2"
+              disabled={saveToAppMutation.isPending}
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Configuration</span>
             </Button>
           )}
-          <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
+          <h2 className="text-2xl font-semibold text-foreground">Results</h2>
         </div>
         <div className="flex items-center space-x-3">
           <Button 
@@ -306,35 +339,59 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Pixelated Result */}
-        <Card>
+        <Card className="rounded-2xl border-border bg-card/70 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Pixelated Result</h3>
-              <div className="text-sm text-gray-600">
-                {(() => {
-                  const maxCol = Math.max(...currentResults.boards.map(b => b.position.col));
-                  const maxRow = Math.max(...currentResults.boards.map(b => b.position.row));
-                  const totalWidth = (maxCol + 1) * 32;
-                  const totalHeight = (maxRow + 1) * 32;
-                  return `${totalWidth} × ${totalHeight} tiles`;
-                })()}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-foreground">Pixelated Result</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {(() => {
+                    const maxCol = Math.max(...currentResults.boards.map(b => b.position.col));
+                    const maxRow = Math.max(...currentResults.boards.map(b => b.position.row));
+                    const totalWidth = (maxCol + 1) * 32;
+                    const totalHeight = (maxRow + 1) * 32;
+                    return `${totalWidth} × ${totalHeight} tiles`;
+                  })()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-2"
+                  onClick={handleDownloadImage}
+                  title="Download mosaic as PNG"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">PNG</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-2"
+                  onClick={() => setShowExpandedView(true)}
+                  title="Expand full view"
+                >
+                  <Expand className="w-4 h-4" />
+                  <span className="hidden sm:inline">Expand</span>
+                </Button>
               </div>
             </div>
             
             <div 
-              className="relative bg-gray-100 rounded-lg overflow-hidden mb-4 cursor-pointer hover:bg-gray-200 transition-colors"
+              className="relative bg-muted rounded-lg overflow-hidden mb-4 cursor-pointer hover:bg-muted transition-colors"
               onClick={() => setShowExpandedView(true)}
               title="Click to expand full view"
             >
               <img 
                 src={pixelatedImageData} 
                 alt="Pixelated LEGO image" 
-                className="w-full h-auto border-2 border-gray-300 pixelated-image"
+                className="w-full h-auto border-2 border-border pixelated-image"
                 style={{ 
                   minHeight: '400px',
                   maxHeight: '600px',
                   objectFit: 'contain',
-                  background: 'white'
+                  background: 'var(--muted)'
                 }}
               />
               
@@ -372,7 +429,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                                 <div className="absolute top-1 right-1 bg-black bg-opacity-90 text-white text-xs px-2 py-1 rounded font-semibold">
                                   {board.id}
                                 </div>
-                                <div className="absolute bottom-1 left-1 text-xs text-black font-medium bg-white bg-opacity-80 px-1 rounded">
+                                <div className="absolute bottom-1 left-1 text-xs text-black font-medium bg-card bg-opacity-80 px-1 rounded">
                                   32×32
                                 </div>
                               </>
@@ -386,63 +443,65 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
               </div>
             </div>
 
-            <div className="text-xs text-gray-500 mb-3">
+            <div className="text-xs text-muted-foreground mb-3">
               Each outlined square represents one 32×32 baseplate. <span className="font-medium">Click image to expand full view.</span>
             </div>
             
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-2">
               {projectId && (
                 <Button 
                   onClick={() => saveToAppMutation.mutate()}
                   disabled={saveToAppMutation.isPending} 
-                  className="flex-1"
+                  className="rounded-xl flex-1 min-w-[140px]"
                   title="Save this project to the app so you can access it later"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  {saveToAppMutation.isPending ? 'Saving...' : 'Save to App'}
+                  {saveToAppMutation.isPending ? 'Saving to Fractix…' : 'Save to App'}
                 </Button>
               )}
               
-              <Button onClick={handleSaveProject} variant="outline" className="flex-1" title="Download project as a file to your computer">
+              <Button
+                onClick={handleSaveProject}
+                variant="outline"
+                className="rounded-xl flex-1 min-w-[140px]"
+                title="Download project as a file to your computer"
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Save Project File
               </Button>
               
-              {settings.exportPng && (
-                <Button onClick={handleDownloadImage} variant="outline" className="flex-1">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Image (PNG)
-                </Button>
-              )}
-              
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setShowExpandedView(true)}
-                title="Expand full view"
+              <Button
+                onClick={handleDownloadImage}
+                variant="outline"
+                className="rounded-xl flex-1 min-w-[140px]"
+                title="Download mosaic as PNG image"
               >
-                <Expand className="w-4 h-4" />
+                <Download className="w-4 h-4 mr-2" />
+                Download Image
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Construction Guide */}
-        <Card>
+        <Card className="rounded-2xl border-border bg-card/70 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Construction Guide</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Construction Guide</h3>
             
             {/* Color Key */}
             <div className="mb-6">
-              <h4 className="text-md font-medium text-gray-900 mb-3">Color Key</h4>
+              <h4 className="text-md font-medium text-foreground mb-3">Color Key</h4>
               <div className="grid grid-cols-1 gap-2 text-sm max-h-48 overflow-y-auto">
                 {currentResults.colorMap.sort((a, b) => b.count - a.count).map((color, index) => (
-                  <div key={index} className="flex items-center space-x-2">
+                  <div
+                    key={index}
+                    className="flex items-center space-x-2 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-2"
+                  >
                     <div 
-                      className="w-4 h-4 rounded border border-gray-300"
+                      className="w-4 h-4 rounded border border-border shrink-0"
                       style={{ backgroundColor: color.hex }}
                     />
-                    <span className="text-gray-700 flex-1">{color.name}</span>
+                    <span className="text-foreground font-medium flex-1">{color.name}</span>
                     <Badge variant="secondary" className="text-xs">
                       {color.count}
                     </Badge>
@@ -453,14 +512,14 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
 
             {/* Assembly Instructions */}
             <div className="mb-6">
-              <h4 className="text-md font-medium text-gray-900 mb-3">Assembly Order</h4>
+              <h4 className="text-md font-medium text-foreground mb-3">Assembly Order</h4>
               <div className="space-y-2 text-sm">
                 {currentResults.boards.slice(0, 4).map((board, index) => (
-                  <div key={board.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded">
-                    <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-medium">
+                  <div key={board.id} className="flex items-center space-x-3 p-2.5 bg-muted/50 border border-border/60 rounded-xl">
+                    <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium shrink-0">
                       {index + 1}
                     </span>
-                    <span className="text-gray-700">
+                    <span className="text-foreground">
                       {index === 0 ? `Start with board ${board.id} (top-left)` :
                        index === 1 ? `Attach board ${board.id} to the right` :
                        `Add board ${board.id} to position`}
@@ -495,10 +554,10 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
       />
 
       {/* Board Details */}
-      <Card>
+      <Card className="rounded-2xl border-border bg-card/70 shadow-sm">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Individual Board Construction Guides</h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Individual Board Construction Guides</h3>
+          <p className="text-sm text-muted-foreground mb-4">
             Each board is a 32×32 LEGO baseplate. Use these previews to build section by section.
           </p>
           
@@ -512,8 +571,8 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h4 className="font-medium text-gray-900">Board {board.id}</h4>
-                        <p className="text-xs text-gray-500">
+                        <h4 className="font-medium text-foreground">Board {board.id}</h4>
+                        <p className="text-xs text-muted-foreground">
                           Position: Row {board.position.row + 1}, Col {board.position.col + 1}
                         </p>
                       </div>
@@ -522,12 +581,12 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                       </Button>
                     </div>
                     
-                    <div className="bg-white border rounded aspect-square mb-3 relative">
+                    <div className="bg-card border rounded aspect-square mb-3 relative">
                       <div className="absolute inset-0 grid grid-cols-8 gap-0 p-1">
                         {preview.map((color, index) => (
                           <div 
                             key={index}
-                            className="border border-gray-200"
+                            className="border border-border"
                             style={{ backgroundColor: color }}
                             title={`Tile ${Math.floor(index / 8) + 1}, ${(index % 8) + 1}`}
                           />
@@ -538,7 +597,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                       </div>
                     </div>
                     
-                    <div className="text-xs text-gray-600 space-y-1">
+                    <div className="text-xs text-muted-foreground space-y-1">
                       <div className="flex justify-between">
                         <span>Unique Colors:</span>
                         <span className="font-medium">{boardColors}</span>
@@ -558,9 +617,9 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
             })}
           </div>
           
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">How to use these guides:</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
+          <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+            <h4 className="text-sm font-medium text-foreground mb-2">How to use these guides:</h4>
+            <ul className="text-sm text-foreground/90 space-y-1">
               <li>• Each board shows a simplified 8×8 preview of the full 32×32 pattern</li>
               <li>• Build boards in the order shown (A1, B1, A2, B2, etc.)</li>
               <li>• Each colored square represents 4×4 tiles in the final build</li>
@@ -571,26 +630,26 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
       </Card>
 
       {/* Project Summary */}
-      <Card>
+      <Card className="rounded-2xl border-border bg-card/70 shadow-sm">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Summary</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Project Summary</h3>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{totalTiles}</div>
-              <div className="text-sm text-gray-600">Total Tiles</div>
+              <div className="text-sm text-muted-foreground">Total Tiles</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{colorMap.length}</div>
-              <div className="text-sm text-gray-600">Colors Used</div>
+              <div className="text-sm text-muted-foreground">Colors Used</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{calculateEstimatedBuildTime(totalTiles)}</div>
-              <div className="text-sm text-gray-600">Build Time</div>
+              <div className="text-sm text-muted-foreground">Build Time</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-warning">{getDifficultyLevel(colorMap.length, totalTiles)}</div>
-              <div className="text-sm text-gray-600">Difficulty</div>
+              <div className="text-sm text-muted-foreground">Difficulty</div>
             </div>
           </div>
         </CardContent>
@@ -608,7 +667,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
           
           <div className="space-y-6 max-h-[80vh] overflow-y-auto">
             {visualGuides.map((guide, index) => (
-              <div key={index} className="border rounded-lg p-4 bg-white">
+              <div key={index} className="border rounded-lg p-4 bg-card">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold">
                     {index === 0 ? 'Project Overview' : `Board ${index}`}
@@ -665,16 +724,16 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                   <img 
                     src={guide} 
                     alt={index === 0 ? 'Project Overview' : `Board ${index} Visual Guide`}
-                    className="max-w-full h-auto border border-gray-200 rounded"
+                    className="max-w-full h-auto border border-border rounded"
                   />
                 </div>
               </div>
             ))}
           </div>
           
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">How to use these guides:</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
+          <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+            <h4 className="text-sm font-medium text-foreground mb-2">How to use these guides:</h4>
+            <ul className="text-sm text-foreground/90 space-y-1">
               <li>• Each guide shows one 32×32 baseplate</li>
               <li>• Numbers around the edges show row/column positions</li>
               <li>• Each coloured square represents one tile</li>
