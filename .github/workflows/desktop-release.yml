@@ -181,7 +181,10 @@ jobs:
           CSC_LINK_RAW: ${{ secrets.CSC_LINK }}
 
       - name: Import code signing certificate
+        id: ios_cert_import
         if: steps.ios_signing.outputs.enabled == 'true'
+        # Bad/corrupt CSC_LINK must not block Windows/Mac release publishing.
+        continue-on-error: true
         shell: bash
         env:
           P12_BASE64: ${{ secrets.CSC_LINK }}
@@ -190,6 +193,7 @@ jobs:
           # bug that strips the extension and breaks security import auto-detect.
           CERT_PATH: ${{ runner.temp }}/fractix-ios-signing.p12
         run: |
+          set -euo pipefail
           KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
 
           # Use Node.js to decode — handles both raw base64 and the
@@ -198,11 +202,35 @@ jobs:
           CERT_OUT_PATH="$CERT_PATH" node -e "
             const fs = require('fs');
             const val = (process.env.P12_BASE64 || '').trim();
+            if (!val) {
+              console.error('CSC_LINK is empty after trim');
+              process.exit(1);
+            }
             const b64 = val.startsWith('data:')
               ? val.substring(val.indexOf(',') + 1).replace(/\s/g, '')
               : val.replace(/\s/g, '');
-            fs.writeFileSync(process.env.CERT_OUT_PATH, Buffer.from(b64, 'base64'));
+            const buf = Buffer.from(b64, 'base64');
+            if (buf.length < 64) {
+              console.error('Decoded CSC_LINK is too small (' + buf.length + ' bytes) — expected a .p12');
+              process.exit(1);
+            }
+            // PKCS#12 files typically start with SEQUENCE 0x30
+            if (buf[0] !== 0x30) {
+              console.error('Decoded CSC_LINK does not look like PKCS#12 (first byte=0x' + buf[0].toString(16) + ')');
+              console.error('Re-encode a real Distribution .p12: base64 -i cert.p12 | pbcopy  (macOS)');
+              process.exit(1);
+            }
+            fs.writeFileSync(process.env.CERT_OUT_PATH, buf);
+            console.log('Decoded PKCS#12 bytes:', buf.length);
           "
+
+          # Verify OpenSSL can parse it (wrong password / corrupt file fails here)
+          if ! openssl pkcs12 -in "$CERT_PATH" -passin "pass:${P12_PASSWORD:-}" -noout -info 2>/tmp/p12_info.err; then
+            echo "::error::CSC_LINK/.p12 could not be read. Check CSC_LINK is base64 of a .p12 (not .cer/.pem) and CSC_KEY_PASSWORD matches."
+            cat /tmp/p12_info.err || true
+            rm -f "$CERT_PATH"
+            exit 1
+          fi
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" signing_temp.keychain
           security set-keychain-settings -lut 21600 signing_temp.keychain
@@ -226,6 +254,14 @@ jobs:
           security list-keychains -d user -s signing_temp.keychain $EXISTING
 
           rm -f "$CERT_PATH"
+          echo "imported=true" >> "$GITHUB_OUTPUT"
+
+      - name: Disable signing after cert import failure
+        if: steps.ios_signing.outputs.enabled == 'true' && steps.ios_cert_import.outcome != 'success'
+        shell: bash
+        run: |
+          echo "IOS_SIGNING_ENABLED=false" >> "$GITHUB_ENV"
+          echo "::warning::iOS signing cert import failed — building unsigned Simulator .zip instead. Fix secrets CSC_LINK + CSC_KEY_PASSWORD, then re-run."
 
       - name: Build iOS artifact
         run: npm run build:ios
