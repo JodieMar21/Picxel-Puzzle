@@ -37,15 +37,15 @@ export default function LicenseGate({ children }: PropsWithChildren) {
   const [isBuying, setIsBuying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    configureLicenseHeaders(() => {
-      if (!entitlement) return {} as Record<string, string>;
-      return {
-        "x-license-entitlement": entitlement.entitlement,
-        "x-device-id": entitlement.deviceId,
-      };
-    });
-  }, [entitlement]);
+  // Configure headers during render (not only in useEffect) so child queries
+  // like /api/lego-colors and /api/projects never race a 401 on first mount.
+  configureLicenseHeaders(() => {
+    if (!entitlement) return {} as Record<string, string>;
+    return {
+      "x-license-entitlement": entitlement.entitlement,
+      "x-device-id": entitlement.deviceId,
+    };
+  });
 
   useEffect(() => {
     async function bootstrap() {

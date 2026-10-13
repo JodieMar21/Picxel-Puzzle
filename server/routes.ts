@@ -241,6 +241,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return id.length <= 12 ? id : `${id.slice(0, 12)}…`;
   }
 
+  // Public contact / support form → emails CONTACT_EMAIL (default jodie-mar@hotmail.com)
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const name = String(req.body?.name ?? "").trim();
+      const email = String(req.body?.email ?? "").trim();
+      const topic = String(req.body?.topic ?? "").trim();
+      const message = String(req.body?.message ?? "").trim();
+
+      if (!name || !email || !topic || !message) {
+        return res.status(400).json({ message: "Name, email, topic, and message are required." });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address." });
+      }
+      if (message.length > 5000) {
+        return res.status(400).json({ message: "Message is too long (max 5000 characters)." });
+      }
+
+      const { sendContactEmail } = await import("./services/emailService");
+      const result = await sendContactEmail({ name, email, topic, message });
+      res.json({
+        ok: true,
+        delivered: result.delivered,
+        message: result.delivered
+          ? "Message sent. We’ll get back to you soon."
+          : "Message received. Email delivery is not configured on the server yet — we’ll still follow up.",
+      });
+    } catch (error: any) {
+      console.error("[contact] Failed to send support email:", error);
+      res.status(500).json({ message: error.message ?? "Failed to send message." });
+    }
+  });
+
   // License key lookup by Stripe session (for purchase success page)
   app.get("/api/license/lookup", async (req, res) => {
     const origin = req.headers.origin ?? "none";
@@ -272,7 +305,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.path === "/health") return next();
     if (req.path.startsWith("/license/")) return next();
     if (req.path === "/checkout") return next();
+    if (req.path === "/contact") return next();
     if (req.path.startsWith("/webhooks/")) return next();
+    // Static brick palette — safe to serve without entitlement.
+    if (req.path === "/lego-colors") return next();
 
     const entitlement = req.header("x-license-entitlement");
     const deviceId = req.header("x-device-id");
@@ -334,7 +370,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      const boardSize = 32; // Each board is 32x32 tiles
+      const requestedTileSize = Number(req.body?.tileSize);
+      const boardSize =
+        Number.isFinite(requestedTileSize) &&
+        [16, 24, 32, 48].includes(requestedTileSize)
+          ? requestedTileSize
+          : 32; // Each board is tileSize x tileSize tiles
       let gridCols, gridRows;
 
       // Use stored boardRows and boardCols if available, otherwise fall back to layout parsing
@@ -470,6 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colorMap,
         boards,
         totalTiles: totalWidth * totalHeight,
+        boardTileSize: boardSize,
       };
 
       const updatedProject = await storage.updateProject(req.params.id, {

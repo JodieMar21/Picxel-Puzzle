@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { getAppSettings } from "@/features/settings/storage";
 import type { PixelationResult } from "@shared/schema";
 
 interface ProcessingViewProps {
@@ -26,7 +27,10 @@ export default function ProcessingView({ projectId, onComplete }: ProcessingView
 
   const processImageMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const response = await apiRequest('POST', `/api/projects/${projectId}/process`);
+      const { tileSize } = getAppSettings();
+      const response = await apiRequest("POST", `/api/projects/${projectId}/process`, {
+        tileSize,
+      });
       return response.json();
     },
     onSuccess: (result) => {

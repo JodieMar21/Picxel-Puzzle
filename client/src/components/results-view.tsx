@@ -11,6 +11,7 @@ import LegoBrickDisplay from "./lego-brick-display";
 import PixelEditor from "./pixel-editor";
 import type { PixelationResult } from "@shared/schema";
 import { calculateEstimatedBuildTime, getDifficultyLevel, downloadImageAsFile, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
+import { useAppSettings } from "@/features/settings/use-app-settings";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 
@@ -27,6 +28,7 @@ interface ResultsViewProps {
 
 export default function ResultsView({ results, boardCount, boardLayout, boardRows, boardCols, projectId, onGoBack }: ResultsViewProps) {
   const { toast } = useToast();
+  const { settings } = useAppSettings();
   const { pixelatedImageData, colorMap, boards, totalTiles } = results;
   const [isEditing, setIsEditing] = useState(false);
   const [editedResults, setEditedResults] = useState<PixelationResult>(results);
@@ -406,10 +408,12 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                 Save Project File
               </Button>
               
-              <Button onClick={handleDownloadImage} variant="outline" className="flex-1">
-                <Download className="w-4 h-4 mr-2" />
-                Download Image
-              </Button>
+              {settings.exportPng && (
+                <Button onClick={handleDownloadImage} variant="outline" className="flex-1">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Image (PNG)
+                </Button>
+              )}
               
               <Button 
                 variant="outline" 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 import ImageEditor from "@/components/image-editor";
+import { useAppSettings } from "@/features/settings/use-app-settings";
 
 interface BoardConfigurationProps {
   boardCount: number;
@@ -43,6 +44,16 @@ export default function BoardConfiguration({
 }: BoardConfigurationProps) {
   const [adjustedImageData, setAdjustedImageData] = useState<string | null>(null);
   const { toast } = useToast();
+  const { settings } = useAppSettings();
+  const maxBoards = settings.maxBoards;
+  const tileSize = settings.tileSize;
+
+  useEffect(() => {
+    if (boardCount > maxBoards) {
+      setBoardCount(maxBoards);
+    }
+  }, [boardCount, maxBoards, setBoardCount]);
+
   const createProjectMutation = useMutation({
     mutationFn: async (data: { name: string; boardCount: number; boardLayout: string; boardRows: number; boardCols: number; image: File; adjustedImageData?: string }) => {
       const formData = new FormData();
@@ -51,6 +62,7 @@ export default function BoardConfiguration({
       formData.append('boardLayout', data.boardLayout);
       formData.append('boardRows', data.boardRows.toString());
       formData.append('boardCols', data.boardCols.toString());
+      formData.append('tileSize', String(tileSize));
       
       // Use adjusted image if available, otherwise original
       if (data.adjustedImageData) {
@@ -94,7 +106,7 @@ export default function BoardConfiguration({
   });
 
   const incrementBoards = () => {
-    if (boardCount < 16) {
+    if (boardCount < maxBoards) {
       const newCount = boardCount + 1;
       setBoardCount(newCount);
       updateLayoutForCount(newCount);
@@ -119,8 +131,9 @@ export default function BoardConfiguration({
   const incrementRows = () => {
     if (boardRows < 10) {
       const newRows = boardRows + 1;
-      setBoardRows(newRows);
       const newCount = newRows * boardCols;
+      if (newCount > maxBoards) return;
+      setBoardRows(newRows);
       setBoardCount(newCount);
       const newLayout = `${boardCols}x${newRows}`;
       setBoardLayout(newLayout);
@@ -141,8 +154,9 @@ export default function BoardConfiguration({
   const incrementCols = () => {
     if (boardCols < 10) {
       const newCols = boardCols + 1;
-      setBoardCols(newCols);
       const newCount = boardRows * newCols;
+      if (newCount > maxBoards) return;
+      setBoardCols(newCols);
       setBoardCount(newCount);
       const newLayout = `${newCols}x${boardRows}`;
       setBoardLayout(newLayout);
@@ -375,8 +389,8 @@ export default function BoardConfiguration({
             <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
               <p className="text-sm text-gray-600">
                 <span className="font-medium">Layout:</span> {boardLayout} • 
-                <span className="font-medium"> Each board:</span> 32×32 tiles • 
-                <span className="font-medium"> Total tiles:</span> {boardCount * 1024}
+                <span className="font-medium"> Each board:</span> {tileSize}×{tileSize} tiles • 
+                <span className="font-medium"> Total tiles:</span> {boardCount * tileSize * tileSize}
               </p>
             </div>
           </div>
@@ -418,7 +432,7 @@ export default function BoardConfiguration({
                   variant="outline" 
                   size="sm"
                   onClick={incrementBoards}
-                  disabled={boardCount >= 16}
+                  disabled={boardCount >= maxBoards}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>

@@ -72,26 +72,11 @@
 }
 
 @layer utilities {
-  .text-success {
-    color: hsl(var(--success));
-  }
-  .text-warning {
-    color: hsl(var(--warning));
-  }
   .text-error {
-    color: hsl(var(--error));
-  }
-  .bg-success {
-    background-color: hsl(var(--success));
-  }
-  .bg-warning {
-    background-color: hsl(var(--warning));
+    color: var(--error);
   }
   .bg-error {
-    background-color: hsl(var(--error));
-  }
-  .hover\:bg-success:hover {
-    background-color: hsl(var(--success) / 0.9);
+    background-color: var(--error);
   }
 
   /* Pixelated image rendering for better clarity */

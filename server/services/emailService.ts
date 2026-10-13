@@ -104,3 +104,70 @@ export async function sendLicenseKeyEmail(input: { to: string; licenseKey: strin
 
   console.log(`[email] License key email sent to ${input.to}`);
 }
+
+const DEFAULT_CONTACT_TO = "jodie-mar@hotmail.com";
+
+export async function sendContactEmail(input: {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+}): Promise<{ delivered: boolean; to: string }> {
+  const to = process.env.CONTACT_EMAIL?.trim() || DEFAULT_CONTACT_TO;
+  const transport = createTransport();
+  const subject = `[Fractix Support] ${input.topic} — ${input.name}`;
+  const text = [
+    `New support message from Fractix Studio`,
+    ``,
+    `Name: ${input.name}`,
+    `Reply-to: ${input.email}`,
+    `Topic: ${input.topic}`,
+    ``,
+    input.message,
+  ].join("\n");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;max-width:560px;margin:40px auto;color:#1a1a1a">
+  <h1 style="font-size:22px;margin-bottom:8px">Fractix support message</h1>
+  <p style="margin:0 0 16px;color:#555">Submitted from the Studio support / contact form.</p>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+    <tr><td style="padding:8px 0;color:#666;width:100px">Name</td><td style="padding:8px 0;font-weight:600">${escapeHtml(input.name)}</td></tr>
+    <tr><td style="padding:8px 0;color:#666">Email</td><td style="padding:8px 0"><a href="mailto:${escapeHtml(input.email)}">${escapeHtml(input.email)}</a></td></tr>
+    <tr><td style="padding:8px 0;color:#666">Topic</td><td style="padding:8px 0">${escapeHtml(input.topic)}</td></tr>
+  </table>
+  <div style="background:#f4f4f5;border-radius:8px;padding:16px 20px;white-space:pre-wrap;line-height:1.5">${escapeHtml(input.message)}</div>
+</body>
+</html>
+`;
+
+  if (!transport) {
+    console.log(`[email] Would send contact form to ${to}:`, text);
+    return { delivered: false, to };
+  }
+
+  const fromName = process.env.EMAIL_FROM_NAME ?? "Fractix Puzzle";
+  const fromAddress = process.env.EMAIL_USER!;
+
+  await transport.sendMail({
+    from: `"${fromName}" <${fromAddress}>`,
+    to,
+    replyTo: input.email,
+    subject,
+    text,
+    html,
+  });
+
+  console.log(`[email] Contact form sent to ${to} from ${input.email}`);
+  return { delivered: true, to };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

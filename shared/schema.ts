@@ -88,6 +88,8 @@ export interface PixelationResult {
   colorMap: ColorUsage[];
   boards: BoardData[];
   totalTiles: number;
+  /** Tiles per board edge (e.g. 32 => 32×32). Defaults to 32 for older projects. */
+  boardTileSize?: number;
 }
 
 export interface ColorUsage {
@@ -99,5 +101,5 @@ export interface ColorUsage {
 export interface BoardData {
   id: string;
   position: { row: number; col: number };
-  pixels: string[][]; // 32x32 array of hex colors
+  pixels: string[][]; // boardTileSize x boardTileSize array of hex colors
 }

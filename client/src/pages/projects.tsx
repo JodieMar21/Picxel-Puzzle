@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import SettingsMenu from "@/components/settings-menu";
 import { apiUrl } from "@/lib/apiBase";
 import { queryClient, getCurrentLicenseHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -164,6 +165,7 @@ export default function Projects() {
               </p>
             </div>
           </div>
+          <SettingsMenu />
         </div>
 
         {completedProjects.length === 0 ? (
