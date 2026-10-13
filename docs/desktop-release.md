@@ -33,11 +33,41 @@ The workflow only exports `CSC_LINK` to electron-builder when the secret is non-
 
 **iPad / iOS (Capacitor build)**
 
-- `APPLE_TEAM_ID` — required when `CSC_LINK` is set (signed `.ipa` for physical iPad/iPhone).
-- `CSC_LINK` / `CSC_KEY_PASSWORD` — optional; when absent, CI builds an **unsigned iOS Simulator** `.zip` instead of a device `.ipa`.
-- `VITE_API_URL` — optional; Railway public API URL baked into the iPad app (defaults to production Railway URL in `scripts/build-ios.mjs`).
-- Register bundle ID **`com.picxel.ios`** in Apple Developer before the first iOS CI build.
-- On Railway, set `CORS_ALLOWED_ORIGINS` to include `capacitor://localhost` (or redeploy after the server CORS update in this repo).
+Bundle ID: **`com.picxel.ios`**. CI builds a signed **`.ipa`** only when signing secrets are present; otherwise it builds an unsigned Simulator `.zip` (not installable on a real iPad).
+
+### Apple Developer / TestFlight setup
+
+1. **Apple Developer Program** — paid membership active.
+2. **Identifiers** → register App ID `com.picxel.ios` (App Store / iOS).
+3. **Certificates** → create **Apple Distribution** (not Development, not Developer ID).
+   - On a Mac: Xcode → Settings → Accounts → Manage Certificates → **Apple Distribution**, or Certificates portal → create & download.
+   - Export as `.p12` with a password.
+4. **App Store Connect** → My Apps → New App → bundle `com.picxel.ios`.
+5. **GitHub Actions secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `APPLE_TEAM_ID` | 10-char Team ID (Membership details) |
+| `CSC_LINK` | Base64 of the Distribution `.p12` (one line, no newlines) |
+| `CSC_KEY_PASSWORD` | Password for that `.p12` |
+| `VITE_API_URL` | Optional; defaults to production Railway URL |
+| `IOS_EXPORT_METHOD` | Optional; default in script is `app-store-connect` (TestFlight). Use `development` only for cable installs on registered devices. |
+
+Encode the cert:
+
+```bash
+base64 -i YourDistribution.p12 | tr -d '\n' > csc_link.txt
+# paste contents of csc_link.txt into CSC_LINK
+```
+
+6. **Build the IPA** (does not run on every `deployment` push — that was blocking Railway):
+   - GitHub → Actions → **Desktop Release** → **Run workflow**, or
+   - Push a `v*` tag.
+7. Download the `fractix-ios-latest` artifact (`.ipa`), upload with **Transporter** or Xcode Organizer to App Store Connect, then invite testers in **TestFlight**.
+
+On Railway, set `CORS_ALLOWED_ORIGINS` to include `capacitor://localhost` if the iPad app calls your API (or redeploy after the server CORS update in this repo).
+
+**Note:** Opening `App.app` from a Simulator zip in the iPad Files app will never install the app — that path is Mac Simulator only.
 
 For local packaging only, copy [`electron-desktop-env/desktop.env.example`](../electron-desktop-env/desktop.env.example) to `electron-desktop-env/desktop.env` and set at least `DATABASE_URL` (see also [`scripts/ensure-desktop-env.mjs`](../scripts/ensure-desktop-env.mjs), which creates a stub if the file is missing).
 

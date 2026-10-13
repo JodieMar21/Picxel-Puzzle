@@ -5,6 +5,10 @@
  * Signed device build (IOS_SIGNING_ENABLED=true): exports .ipa for physical iPad/iPhone.
  * Requires APPLE_TEAM_ID and CSC_LINK imported to keychain before this runs (CI).
  *
+ * IOS_EXPORT_METHOD (signed builds only):
+ *   - app-store-connect (default) — TestFlight / App Store
+ *   - development — ad-hoc install via Xcode on registered devices only
+ *
  * Unsigned fallback: builds iOS Simulator .app and zips it (Xcode Simulator on Mac only).
  */
 import { execSync } from "node:child_process";
@@ -17,7 +21,16 @@ const apiUrl =
   "https://picxel-puzzle-production.up.railway.app";
 const teamId = process.env.APPLE_TEAM_ID;
 const signingEnabled = process.env.IOS_SIGNING_ENABLED === "true";
+const exportMethod = process.env.IOS_EXPORT_METHOD?.trim() || "app-store-connect";
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "1.0.0";
+
+const ALLOWED_EXPORT_METHODS = new Set([
+  "app-store-connect",
+  "app-store",
+  "development",
+  "ad-hoc",
+  "enterprise",
+]);
 
 function run(cmd, opts = {}) {
   console.log(`\n> ${cmd}\n`);
@@ -26,6 +39,9 @@ function run(cmd, opts = {}) {
 
 console.log(`[build:ios] API URL: ${apiUrl}`);
 console.log(`[build:ios] Signing: ${signingEnabled ? "enabled (device .ipa)" : "disabled (simulator .zip)"}`);
+if (signingEnabled) {
+  console.log(`[build:ios] Export method: ${exportMethod}`);
+}
 
 run(`npx vite build`, {
   env: { ...process.env, NODE_ENV: "production", VITE_API_URL: apiUrl },
@@ -40,6 +56,13 @@ mkdirSync(releaseDir, { recursive: true });
 if (signingEnabled) {
   if (!teamId) {
     console.error("[build:ios] APPLE_TEAM_ID is required when IOS_SIGNING_ENABLED=true.");
+    process.exit(1);
+  }
+  if (!ALLOWED_EXPORT_METHODS.has(exportMethod)) {
+    console.error(
+      `[build:ios] Invalid IOS_EXPORT_METHOD="${exportMethod}". ` +
+        `Use one of: ${[...ALLOWED_EXPORT_METHODS].join(", ")}`,
+    );
     process.exit(1);
   }
 
@@ -71,11 +94,13 @@ if (signingEnabled) {
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>development</string>
+  <string>${exportMethod}</string>
   <key>teamID</key>
   <string>${teamId}</string>
   <key>signingStyle</key>
   <string>automatic</string>
+  <key>destination</key>
+  <string>export</string>
 </dict>
 </plist>
 `,
