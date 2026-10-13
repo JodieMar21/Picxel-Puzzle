@@ -1,7 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" suppressHydrationWarning>
   <head>
     <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("fractix-theme");
+          // App default / former "system" preference is light (not OS dark mode).
+          var theme = stored === "dark" ? "dark" : "light";
+          if (stored === "system") {
+            try { localStorage.setItem("fractix-theme", "light"); } catch (_) {}
+          }
+          if (theme === "dark") document.documentElement.classList.add("dark");
+          else document.documentElement.classList.remove("dark");
+        } catch (_) {}
+      })();
       if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
         window.__vite_hmr_host = 'localhost';
         window.__vite_hmr_port = 5000;

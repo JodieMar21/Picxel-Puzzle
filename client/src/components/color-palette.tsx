@@ -15,13 +15,13 @@ export default function ColorPalette() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl border-border bg-card/70 shadow-sm backdrop-blur-sm">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Colours</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Available Colours</h3>
           <div className="animate-pulse">
             <div className="grid grid-cols-6 gap-2">
               {Array.from({ length: 18 }).map((_, i) => (
-                <div key={i} className="w-8 h-8 bg-gray-200 rounded" />
+                <div key={i} className="w-8 h-8 bg-muted rounded-lg" />
               ))}
             </div>
           </div>
@@ -31,16 +31,18 @@ export default function ColorPalette() {
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl border-border bg-card/70 shadow-sm backdrop-blur-sm">
       <CardContent className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Colours</h3>
-        <p className="text-sm text-gray-600 mb-4">{colors.length} custom colours in your inventory</p>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Available Colours</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          {colors.length} custom colours in your inventory
+        </p>
         
         <div className="grid grid-cols-6 gap-2">
           {colors.slice(0, 18).map((color, index) => (
             <button
               key={index}
-              className="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform"
+              className="w-8 h-8 rounded-lg border border-border cursor-pointer hover:scale-110 transition-transform shadow-sm"
               style={{ backgroundColor: color.hex }}
               title={color.name}
               onClick={() => setSelectedColor(color)}
@@ -50,11 +52,11 @@ export default function ColorPalette() {
         
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="ghost" className="text-sm text-primary hover:text-blue-700 font-medium mt-3 p-0">
+            <Button variant="ghost" className="text-sm text-primary hover:text-primary/80 font-medium mt-3 p-0 h-auto">
               View All Colours <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl rounded-2xl">
             <DialogHeader>
               <DialogTitle>All Colours ({colors.length})</DialogTitle>
             </DialogHeader>
@@ -62,11 +64,11 @@ export default function ColorPalette() {
               {colors.map((color, index) => (
                 <div key={index} className="text-center">
                   <div 
-                    className="w-10 h-10 rounded border border-gray-300 mx-auto mb-1 cursor-pointer hover:scale-110 transition-transform"
+                    className="w-10 h-10 rounded-lg border border-border mx-auto mb-1 cursor-pointer hover:scale-110 transition-transform"
                     style={{ backgroundColor: color.hex }}
                     title={color.name}
                   />
-                  <p className="text-xs text-gray-600 truncate">{color.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{color.name}</p>
                 </div>
               ))}
             </div>
@@ -74,15 +76,15 @@ export default function ColorPalette() {
         </Dialog>
 
         {selectedColor && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mt-4 p-3 bg-muted/50 rounded-xl border border-border">
             <div className="flex items-center space-x-3">
               <div 
-                className="w-6 h-6 rounded border border-gray-300"
+                className="w-6 h-6 rounded-md border border-border"
                 style={{ backgroundColor: selectedColor.hex }}
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">{selectedColor.name}</p>
-                <p className="text-xs text-gray-500">{selectedColor.hex}</p>
+                <p className="text-sm font-medium text-foreground">{selectedColor.name}</p>
+                <p className="text-xs text-muted-foreground">{selectedColor.hex}</p>
               </div>
             </div>
           </div>

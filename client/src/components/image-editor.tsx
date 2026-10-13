@@ -243,14 +243,14 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
   }, [zoom, rotation, position, brightness, contrast, saturation, sharpness]);
 
   return (
-    <Card>
+    <Card className="rounded-2xl border-border bg-card/70 shadow-sm backdrop-blur-sm">
       <CardContent className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Adjust Image & Enhance Colors</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Adjust Image & Enhance Colors</h3>
         
         {/* Canvas Container - Perfect Square for 32x32 boards */}
         <div 
           ref={containerRef}
-          className="relative bg-gray-100 rounded-lg overflow-hidden mb-4 mx-auto"
+          className="relative bg-muted rounded-xl overflow-hidden mb-4 mx-auto border border-border"
           style={{ 
             width: '400px', 
             height: '400px',
@@ -283,7 +283,7 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
         <div className="space-y-4">
           {/* Zoom Control */}
           <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-foreground mb-2">
               Zoom: {Math.round(zoom * 100)}%
             </Label>
             <div className="flex items-center space-x-2">
@@ -308,7 +308,7 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Brightness */}
             <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-foreground mb-2">
                 Brightness: {brightness}%
               </Label>
               <Slider
@@ -323,7 +323,7 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
 
             {/* Contrast */}
             <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-foreground mb-2">
                 Contrast: {contrast}%
               </Label>
               <Slider
@@ -338,7 +338,7 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
 
             {/* Saturation */}
             <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-foreground mb-2">
                 Saturation: {saturation}%
               </Label>
               <Slider
@@ -353,7 +353,7 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
 
             {/* Sharpness */}
             <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-foreground mb-2">
                 Sharpness: {sharpness}%
               </Label>
               <Slider
@@ -403,12 +403,12 @@ export default function ImageEditor({ imagePreview, boardCount, boardLayout, boa
           </div>
 
           {/* Instructions */}
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+          <div className="text-sm text-muted-foreground bg-primary/10 border border-primary/20 p-3 rounded-xl">
             <div className="flex items-start space-x-2">
-              <Move className="w-4 h-4 mt-0.5 text-blue-600" />
+              <Move className="w-4 h-4 mt-0.5 text-primary shrink-0" />
               <div>
-                <p className="font-medium text-blue-900">How to adjust your image:</p>
-                <ul className="mt-1 space-y-1 text-blue-800">
+                <p className="font-medium text-foreground">How to adjust your image:</p>
+                <ul className="mt-1 space-y-1">
                   <li>• Drag the image to reposition it</li>
                   <li>• Use zoom slider or buttons to scale</li>
                   <li>• Rotate left/right for better fit</li>

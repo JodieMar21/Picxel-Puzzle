@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Box, Settings, HelpCircle, FolderOpen } from "lucide-react";
+import { HelpCircle, FolderOpen, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,7 +9,9 @@ import ColorPalette from "@/components/color-palette";
 import ProcessingView from "@/components/processing-view";
 import ResultsView from "@/components/results-view";
 import ProfileModal from "@/components/profile-modal";
+import StudioShell from "@/components/studio-shell";
 import { getProfile } from "@/features/profile/storage";
+import { useAppSettings } from "@/features/settings/use-app-settings";
 import type { PixelationResult } from "@shared/schema";
 
 export default function Home() {
@@ -20,42 +22,31 @@ export default function Home() {
   const [boardLayout, setBoardLayout] = useState("2x2");
   const [boardRows, setBoardRows] = useState(2);
   const [boardCols, setBoardCols] = useState(2);
-  const [projectName, setProjectName] = useState('');
+  const [projectName, setProjectName] = useState("");
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState<PixelationResult | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsRef = useRef<HTMLButtonElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileData, setProfileData] = useState(() => getProfile());
+  const { settings } = useAppSettings();
+  const tileSize = settings.tileSize;
 
-  // Add these for Help dropdown
   const [helpOpen, setHelpOpen] = useState(false);
-  const helpRef = useRef<HTMLButtonElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        settingsRef.current &&
-        !settingsRef.current.contains(event.target as Node) &&
-        helpRef.current &&
-        !helpRef.current.contains(event.target as Node)
-      ) {
-        setSettingsOpen(false);
+      if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
         setHelpOpen(false);
       }
-      // If only one should close at a time, adjust logic accordingly
     }
-    if (settingsOpen || helpOpen) {
+    if (helpOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [settingsOpen, helpOpen]);
+  }, [helpOpen]);
 
   const handleImageUpload = (file: File, preview: string) => {
     setUploadedImage(file);
@@ -77,119 +68,82 @@ export default function Home() {
   const handleGoBack = () => {
     setResults(null);
     setProcessing(false);
-    setCurrentStep(2); // Go back to Configure Boards step
+    setCurrentStep(2);
   };
 
   const steps = [
-    { number: 1, title: "Upload Image", active: currentStep >= 1, completed: currentStep > 1 },
-    { number: 2, title: "Configure Boards", active: currentStep >= 2, completed: currentStep > 2 },
-    { number: 3, title: "Generate Guide", active: currentStep >= 3, completed: false }
+    { number: 1, title: "Upload", active: currentStep >= 1, completed: currentStep > 1 },
+    { number: 2, title: "Configure", active: currentStep >= 2, completed: currentStep > 2 },
+    { number: 3, title: "Generate", active: currentStep >= 3, completed: false },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Box className="text-white w-5 h-5" />
+    <StudioShell
+      headerActions={
+        <>
+          <Link href="/projects">
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl border-border/80 bg-card/60">
+              <FolderOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">My Projects</span>
+            </Button>
+          </Link>
+          <div className="relative" ref={helpRef}>
+            <button
+              type="button"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              onClick={() => setHelpOpen((open) => !open)}
+              aria-label="Help"
+              aria-expanded={helpOpen}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            {helpOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-popover/95 backdrop-blur border border-border rounded-2xl shadow-lg z-50 p-4 text-popover-foreground">
+                <h4 className="font-semibold mb-2">Need Help?</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>
+                    <span className="font-medium text-foreground">How to use:</span> Upload an
+                    image, configure your board, and generate your mosaic guide.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Best results:</span> Use
+                    high-contrast, simple images. Square images work best.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Support:</span> Visit{" "}
+                    <Link href="/documentation" className="text-primary underline">
+                      documentation
+                    </Link>{" "}
+                    or{" "}
+                    <Link href="/contact" className="text-primary underline">
+                      contact us
+                    </Link>
+                    .
+                  </li>
+                </ul>
               </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Fractix Studio</h1>
-                <p className="text-sm text-gray-500">Professional Image to Brick Converter</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/projects">
-                <Button variant="outline" size="sm">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  My Projects
-                </Button>
-              </Link>
-              <div className="relative">
-                <button
-                  ref={helpRef}
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() => setHelpOpen((open) => !open)}
-                  aria-label="Help"
-                >
-                  <HelpCircle className="w-5 h-5" />
-                </button>
-                {helpOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">Need Help?</h4>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li>
-                        <span className="font-medium">How to use:</span> Upload an image, configure your board, and generate your mosaic guide.
-                      </li>
-                      <li>
-                        <span className="font-medium">Best results:</span> Use high-contrast, simple images. Square images work best.
-                      </li>
-                      <li>
-                        <span className="font-medium">Support:</span> For more help, visit our <a href="#" className="text-primary underline">documentation</a> or <a href="#" className="text-primary underline">contact us</a>.
-                      </li>
-                    </ul>
-                    <div className="mt-4 text-xs text-gray-400">
-                      Tip: You can always return to this help menu if you get stuck!
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="relative">
-                <button
-                  ref={settingsRef}
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() => setSettingsOpen((open) => !open)}
-                  aria-label="Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
-                {settingsOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">Settings</h4>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li>
-                        <span className="font-medium">Theme:</span> Light (default)
-                      </li>
-                      <li>
-                        <span className="font-medium">Tile Size:</span> 32x32
-                      </li>
-                      <li>
-                        <span className="font-medium">Max Boards:</span> 12
-                      </li>
-                      <li>
-                        <span className="font-medium">Export Format:</span> PDF, PNG
-                      </li>
-                    </ul>
-                    <div className="mt-4 text-xs text-gray-400">
-                      More settings coming soon!
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setProfileOpen(true)}
-                className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                aria-label="Open profile"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profileData?.avatarDataUrl ?? undefined} alt="Profile" />
-                  <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
-                    {profileData?.name
-                      ? profileData.name.slice(0, 2).toUpperCase()
-                      : profileData?.username
-                        ? profileData.username.slice(0, 2).toUpperCase()
-                        : "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      </header>
-
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+            aria-label="Open profile"
+          >
+            <Avatar className="h-8 w-8 ring-2 ring-border/60">
+              <AvatarImage src={profileData?.avatarDataUrl ?? undefined} alt="Profile" />
+              <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
+                {profileData?.name
+                  ? profileData.name.slice(0, 2).toUpperCase()
+                  : profileData?.username
+                    ? profileData.username.slice(0, 2).toUpperCase()
+                    : "U"}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        </>
+      }
+    >
       <ProfileModal
         open={profileOpen}
         onOpenChange={(o) => {
@@ -198,63 +152,57 @@ export default function Home() {
         }}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Process Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Create your custom mosaic</h2>
-            <div className="relative">
-              {settingsOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Settings</h4>
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    <li>
-                      <span className="font-medium">Theme:</span> Light (default)
-                    </li>
-                    <li>
-                      <span className="font-medium">Tile Size:</span> 32x32
-                    </li>
-                    <li>
-                      <span className="font-medium">Max Boards:</span> 12
-                    </li>
-                    <li>
-                      <span className="font-medium">Export Format:</span> PDF, PNG
-                    </li>
-                  </ul>
-                  <div className="mt-4 text-xs text-gray-400">
-                    More settings coming soon!
-                  </div>
-                </div>
+      <div className="mb-8 sm:mb-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <p className="text-sm font-semibold tracking-wide text-primary mb-2 flex items-center gap-2">
+          <Sparkles className="w-4 h-4" />
+          Fractix Studio
+        </p>
+        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground max-w-2xl">
+          Create your custom mosaic
+        </h2>
+        <p className="mt-3 text-muted-foreground max-w-xl leading-relaxed">
+          Upload a photo, lay out your boards, and generate a brick-ready build guide.
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-2 sm:gap-3">
+          {steps.map((step, index) => (
+            <div key={step.number} className="flex items-center gap-2 sm:gap-3">
+              <div
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors ${
+                  step.completed
+                    ? "border-success/30 bg-success/10 text-foreground"
+                    : step.active
+                      ? "border-primary/40 bg-primary/10 text-foreground"
+                      : "border-border bg-card/60 text-muted-foreground"
+                }`}
+              >
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                    step.completed
+                      ? "bg-success text-success-foreground"
+                      : step.active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {step.number}
+                </span>
+                <span className="text-sm font-medium">{step.title}</span>
+              </div>
+              {index < steps.length - 1 && (
+                <div className="hidden sm:block w-8 h-px bg-border" />
               )}
             </div>
-          </div>
-          <div className="flex items-center space-x-4 mb-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex items-center">
-                <div className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${step.completed ? 'bg-success text-white' : step.active ? 'bg-primary text-white' : 'bg-gray-300 text-gray-600'}`}>
-                    {step.number}
-                  </div>
-                  <span className={`ml-2 text-sm font-medium ${step.active ? 'text-gray-900' : 'text-gray-500'}`}>
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className="w-16 h-0.5 bg-gray-300 ml-4"></div>
-                )}
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
+      </div>
 
+      <div className="animate-in fade-in slide-in-from-bottom-3 duration-700 delay-100">
         {processing ? (
-          <ProcessingView 
-            projectId={projectId!}
-            onComplete={handleProcessingComplete}
-          />
+          <ProcessingView projectId={projectId!} onComplete={handleProcessingComplete} />
         ) : results ? (
-          <ResultsView 
-            results={results} 
+          <ResultsView
+            results={results}
             boardCount={boardCount}
             boardLayout={boardLayout}
             boardRows={boardRows}
@@ -263,15 +211,14 @@ export default function Home() {
             onGoBack={handleGoBack}
           />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <ImageUpload 
+              <ImageUpload
                 onImageUpload={handleImageUpload}
                 uploadedImage={uploadedImage}
                 imagePreview={imagePreview}
               />
-              
+
               {uploadedImage && imagePreview && (
                 <BoardConfiguration
                   boardCount={boardCount}
@@ -291,77 +238,57 @@ export default function Home() {
               )}
             </div>
 
-            {/* Sidebar */}
             <div className="space-y-6">
               <ColorPalette />
-              
-              {/* Project Statistics */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Statistics</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Tiles</span>
-                    <span className="font-semibold text-gray-900">{boardCount * 32 * 32}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Estimated Colors</span>
-                    <span className="font-semibold text-gray-900">15-25</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Build Time</span>
-                    <span className="font-semibold text-gray-900">~{Math.round((boardCount * 32 * 32 * 7) / 3600)}h</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Difficulty</span>
+
+              <div className="rounded-2xl border border-border bg-card/70 p-6 shadow-sm backdrop-blur-sm">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Project Statistics</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: "Total Tiles", value: String(boardCount * tileSize * tileSize) },
+                    { label: "Estimated Colors", value: "15–25" },
+                    {
+                      label: "Build Time",
+                      value: `~${Math.round((boardCount * tileSize * tileSize * 7) / 3600)}h`,
+                    },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5"
+                    >
+                      <span className="text-sm text-muted-foreground">{row.label}</span>
+                      <span className="font-semibold text-foreground">{row.value}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5">
+                    <span className="text-sm text-muted-foreground">Difficulty</span>
                     <span className="font-semibold text-warning">
-                      {boardCount <= 4 ? 'Intermediate' : 'Advanced'}
+                      {boardCount <= 4 ? "Intermediate" : "Advanced"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Tips */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tips for Best Results</h3>
-                
-                <ul className="space-y-3 text-sm text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <span className="text-warning mt-0.5">💡</span>
-                    <span>Use high-contrast images for better pixelation</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-warning mt-0.5">💡</span>
-                    <span>Square images work best for even board layouts</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-warning mt-0.5">💡</span>
-                    <span>Avoid images with too much fine detail</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-warning mt-0.5">💡</span>
-                    <span>Test with smaller board counts first</span>
-                  </li>
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card/80 to-card p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Tips for best results</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {[
+                    "Use high-contrast images for cleaner pixelation",
+                    "Square images work best for even board layouts",
+                    "Avoid images with too much fine detail",
+                    "Test with smaller board counts first",
+                  ].map((tip) => (
+                    <li key={tip} className="flex gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{tip}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
           </div>
         )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">© 2024 Fractix Studio. Professional mosaic creation tool.</p>
-            <div className="flex items-center space-x-6 text-sm text-gray-500">
-              <a href="#" className="hover:text-gray-700">Support</a>
-              <a href="#" className="hover:text-gray-700">Documentation</a>
-              <a href="#" className="hover:text-gray-700">Contact</a>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </StudioShell>
   );
 }

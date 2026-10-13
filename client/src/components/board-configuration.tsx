@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { useMutation } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 import ImageEditor from "@/components/image-editor";
+import FractixLoader from "@/components/fractix-loader";
+import { getAppSettings } from "@/features/settings/storage";
+import { useAppSettings } from "@/features/settings/use-app-settings";
 
 interface BoardConfigurationProps {
   boardCount: number;
@@ -43,6 +46,16 @@ export default function BoardConfiguration({
 }: BoardConfigurationProps) {
   const [adjustedImageData, setAdjustedImageData] = useState<string | null>(null);
   const { toast } = useToast();
+  const { settings } = useAppSettings();
+  const maxBoards = settings.maxBoards;
+  const tileSize = settings.tileSize;
+
+  useEffect(() => {
+    if (boardCount > maxBoards) {
+      setBoardCount(maxBoards);
+    }
+  }, [boardCount, maxBoards, setBoardCount]);
+
   const createProjectMutation = useMutation({
     mutationFn: async (data: { name: string; boardCount: number; boardLayout: string; boardRows: number; boardCols: number; image: File; adjustedImageData?: string }) => {
       const formData = new FormData();
@@ -51,6 +64,7 @@ export default function BoardConfiguration({
       formData.append('boardLayout', data.boardLayout);
       formData.append('boardRows', data.boardRows.toString());
       formData.append('boardCols', data.boardCols.toString());
+      formData.append('tileSize', String(getAppSettings().tileSize));
       
       // Use adjusted image if available, otherwise original
       if (data.adjustedImageData) {
@@ -94,7 +108,7 @@ export default function BoardConfiguration({
   });
 
   const incrementBoards = () => {
-    if (boardCount < 16) {
+    if (boardCount < maxBoards) {
       const newCount = boardCount + 1;
       setBoardCount(newCount);
       updateLayoutForCount(newCount);
@@ -119,8 +133,9 @@ export default function BoardConfiguration({
   const incrementRows = () => {
     if (boardRows < 10) {
       const newRows = boardRows + 1;
-      setBoardRows(newRows);
       const newCount = newRows * boardCols;
+      if (newCount > maxBoards) return;
+      setBoardRows(newRows);
       setBoardCount(newCount);
       const newLayout = `${boardCols}x${newRows}`;
       setBoardLayout(newLayout);
@@ -141,8 +156,9 @@ export default function BoardConfiguration({
   const incrementCols = () => {
     if (boardCols < 10) {
       const newCols = boardCols + 1;
-      setBoardCols(newCols);
       const newCount = boardRows * newCols;
+      if (newCount > maxBoards) return;
+      setBoardCols(newCols);
       setBoardCount(newCount);
       const newLayout = `${newCols}x${boardRows}`;
       setBoardLayout(newLayout);
@@ -235,10 +251,10 @@ export default function BoardConfiguration({
   };
 
   const calculateDimensions = () => {
-    const tileSize = 8; // mm per tile
-    const tilesPerBoard = 32;
+    const mmPerTile = 8;
+    const tilesPerBoard = tileSize;
     const totalTiles = Math.ceil(Math.sqrt(boardCount)) * tilesPerBoard;
-    const mmSize = totalTiles * tileSize;
+    const mmSize = totalTiles * mmPerTile;
     
     return `${totalTiles}×${totalTiles} LEGO tiles (${mmSize}×${mmSize}mm)`;
   };
@@ -264,9 +280,22 @@ export default function BoardConfiguration({
     });
   };
 
+  if (createProjectMutation.isPending) {
+    return (
+      <div className="relative min-h-[320px] rounded-2xl border border-border bg-card/70 overflow-hidden">
+        <FractixLoader
+          fullScreen={false}
+          title="Creating your project"
+          subtitle="Uploading image and preparing boards"
+          statusLabel="Please wait until this finishes…"
+          animateProgress
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Image Editor */}
       <ImageEditor 
         imagePreview={imagePreview}
         boardCount={boardCount}
@@ -276,14 +305,13 @@ export default function BoardConfiguration({
         onImageAdjusted={setAdjustedImageData}
       />
 
-      <Card>
+      <Card className="rounded-2xl border-border bg-card/70 shadow-sm backdrop-blur-sm">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Board Configuration</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Board Configuration</h3>
           
           <div className="space-y-6">
-            {/* Project Name */}
             <div>
-              <Label htmlFor="project-name" className="block text-sm font-medium text-gray-700 mb-2">
+              <Label htmlFor="project-name" className="block text-sm font-medium text-foreground mb-2">
                 Project Name
               </Label>
               <Input
@@ -292,158 +320,150 @@ export default function BoardConfiguration({
                 placeholder="Enter project name..."
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                className="w-full"
+                className="w-full rounded-xl"
               />
             </div>
 
-          {/* Unique Layout for First Image Set */}
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200 mb-6">
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
-              <h4 className="text-lg font-semibold text-purple-800">Board Grid Configuration</h4>
+            <div className="p-4 rounded-2xl border border-primary/25 bg-primary/5 mb-2">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2.5 h-2.5 bg-primary rounded-full" />
+                <h4 className="text-base font-semibold text-foreground">Board Grid Configuration</h4>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-card/80 p-4 rounded-xl border border-border shadow-sm">
+                  <Label className="block text-sm font-medium text-muted-foreground mb-2">Rows</Label>
+                  <div className="flex items-center space-x-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={decrementRows}
+                      disabled={boardRows <= 1}
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-2xl font-bold text-foreground min-w-[2rem] text-center">
+                      {boardRows}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={incrementRows}
+                      disabled={boardRows >= 10}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-card/80 p-4 rounded-xl border border-border shadow-sm">
+                  <Label className="block text-sm font-medium text-muted-foreground mb-2">Columns</Label>
+                  <div className="flex items-center space-x-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={decrementCols}
+                      disabled={boardCols <= 1}
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-2xl font-bold text-foreground min-w-[2rem] text-center">
+                      {boardCols}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={incrementCols}
+                      disabled={boardCols >= 10}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-card/80 p-4 rounded-xl border border-border shadow-sm">
+                  <Label className="block text-sm font-medium text-muted-foreground mb-2">Total Boards</Label>
+                  <div className="text-center">
+                    <span className="text-2xl font-bold text-foreground">
+                      {boardCount}
+                    </span>
+                    <p className="text-sm text-muted-foreground mt-1">{boardRows}×{boardCols} grid</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 rounded-xl border border-border bg-muted/40">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Layout:</span> {boardLayout} •{" "}
+                  <span className="font-medium text-foreground">Each board:</span> {tileSize}×{tileSize} tiles •{" "}
+                  <span className="font-medium text-foreground">Total tiles:</span>{" "}
+                  {boardCount * tileSize * tileSize}
+                </p>
+              </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Rows Control */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100">
-                <Label className="block text-sm font-medium text-purple-700 mb-2">Rows</Label>
-                <div className="flex items-center space-x-3">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="block text-sm font-medium text-foreground mb-2">Quick Presets</Label>
+                <Select value={getCurrentLayoutValue()} onValueChange={handleLayoutChange}>
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1x1">1×1 Grid (1 board)</SelectItem>
+                    <SelectItem value="2x2">2×2 Grid (4 boards)</SelectItem>
+                    <SelectItem value="3x2">3×2 Grid (6 boards)</SelectItem>
+                    <SelectItem value="3x3">3×3 Grid (9 boards)</SelectItem>
+                    <SelectItem value="4x2">4×2 Grid (8 boards)</SelectItem>
+                    <SelectItem value="custom">Custom Layout ({boardCols}×{boardRows})</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium text-foreground mb-2">Legacy Board Count</Label>
+                <div className="flex items-center space-x-4">
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={decrementRows}
-                    disabled={boardRows <= 1}
-                    className="border-purple-300 hover:bg-purple-50"
+                    onClick={decrementBoards}
+                    disabled={boardCount <= 1}
                   >
                     <Minus className="w-4 h-4" />
                   </Button>
-                  <span className="text-2xl font-bold text-purple-800 min-w-[2rem] text-center">
-                    {boardRows}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={incrementRows}
-                    disabled={boardRows >= 10}
-                    className="border-purple-300 hover:bg-purple-50"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Columns Control */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100">
-                <Label className="block text-sm font-medium text-blue-700 mb-2">Columns</Label>
-                <div className="flex items-center space-x-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={decrementCols}
-                    disabled={boardCols <= 1}
-                    className="border-blue-300 hover:bg-blue-50"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="text-2xl font-bold text-blue-800 min-w-[2rem] text-center">
-                    {boardCols}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={incrementCols}
-                    disabled={boardCols >= 10}
-                    className="border-blue-300 hover:bg-blue-50"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Total Boards Display */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                <Label className="block text-sm font-medium text-gray-700 mb-2">Total Boards</Label>
-                <div className="text-center">
-                  <span className="text-2xl font-bold text-gray-800">
+                  <span className="text-xl font-semibold text-foreground min-w-[3rem] text-center">
                     {boardCount}
                   </span>
-                  <p className="text-sm text-gray-500 mt-1">{boardRows}×{boardCols} grid</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={incrementBoards}
+                    disabled={boardCount >= maxBoards}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Layout:</span> {boardLayout} • 
-                <span className="font-medium"> Each board:</span> 32×32 tiles • 
-                <span className="font-medium"> Total tiles:</span> {boardCount * 1024}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Preset Layouts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</Label>
-              <Select value={getCurrentLayoutValue()} onValueChange={handleLayoutChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1x1">1×1 Grid (1 board)</SelectItem>
-                  <SelectItem value="2x2">2×2 Grid (4 boards)</SelectItem>
-                  <SelectItem value="3x2">3×2 Grid (6 boards)</SelectItem>
-                  <SelectItem value="3x3">3×3 Grid (9 boards)</SelectItem>
-                  <SelectItem value="4x2">4×2 Grid (8 boards)</SelectItem>
-                  <SelectItem value="custom">Custom Layout ({boardCols}×{boardRows})</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Legacy Board Count</Label>
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={decrementBoards}
-                  disabled={boardCount <= 1}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <span className="text-xl font-semibold text-gray-900 min-w-[3rem] text-center">
-                  {boardCount}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={incrementBoards}
-                  disabled={boardCount >= 16}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+            <div className="p-4 rounded-xl border border-primary/20 bg-primary/10">
+              <div className="flex items-start space-x-3">
+                <Info className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Final Dimensions</p>
+                  <p className="text-sm text-muted-foreground">{calculateDimensions()}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <Info className="w-5 h-5 text-primary mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Final Dimensions</p>
-                <p className="text-sm text-gray-600">{calculateDimensions()}</p>
-              </div>
-            </div>
-          </div>
-
-          <Button 
-            onClick={handleStartPixelation}
-            disabled={createProjectMutation.isPending}
-            className="w-full"
-            size="lg"
-          >
-            {createProjectMutation.isPending ? "Creating Project..." : "Start Pixelation Process"}
-          </Button>
+            <Button 
+              onClick={handleStartPixelation}
+              disabled={createProjectMutation.isPending}
+              className="w-full rounded-xl"
+              size="lg"
+            >
+              {createProjectMutation.isPending ? "Creating Project..." : "Start Pixelation Process"}
+            </Button>
           </div>
         </CardContent>
       </Card>

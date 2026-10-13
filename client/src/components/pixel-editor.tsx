@@ -30,11 +30,16 @@ interface ExpandedBrickEditorProps {
   onPixelChange: (boardId: string, x: number, y: number, newColor: string) => void;
 }
 
+function getBoardTileSize(result: PixelationResult): number {
+  return result.boardTileSize ?? result.boards[0]?.pixels?.length ?? 32;
+}
+
 // Helper component for the expanded brick editor
 function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedBrickEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [paintBatch, setPaintBatch] = useState<{boardId: string, x: number, y: number, oldColor: string}[]>([]);
+  const boardTileSize = getBoardTileSize(result);
 
   const drawBrickStud = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) => {
     // Draw the base tile
@@ -94,18 +99,18 @@ function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedB
     const maxRow = Math.max(...result.boards.map(b => b.position.row));
     const gridCols = maxCol + 1;
     const gridRows = maxRow + 1;
-    const totalPixelsWidth = gridCols * 32;
-    const totalPixelsHeight = gridRows * 32;
+    const totalPixelsWidth = gridCols * boardTileSize;
+    const totalPixelsHeight = gridRows * boardTileSize;
     const tileSize = canvas.width / totalPixelsWidth;
     
-    const boardCol = Math.floor(x / (32 * tileSize));
-    const boardRow = Math.floor(y / (32 * tileSize));
-    const pixelX = Math.floor((x % (32 * tileSize)) / tileSize);
-    const pixelY = Math.floor((y % (32 * tileSize)) / tileSize);
+    const boardCol = Math.floor(x / (boardTileSize * tileSize));
+    const boardRow = Math.floor(y / (boardTileSize * tileSize));
+    const pixelX = Math.floor((x % (boardTileSize * tileSize)) / tileSize);
+    const pixelY = Math.floor((y % (boardTileSize * tileSize)) / tileSize);
 
     // Find the corresponding board
     const board = result.boards.find(b => b.position.col === boardCol && b.position.row === boardRow);
-    if (board && pixelX >= 0 && pixelX < 32 && pixelY >= 0 && pixelY < 32) {
+    if (board && pixelX >= 0 && pixelX < boardTileSize && pixelY >= 0 && pixelY < boardTileSize) {
       return { boardId: board.id, x: pixelX, y: pixelY, currentColor: board.pixels[pixelY][pixelX] };
     }
     return null;
@@ -163,8 +168,8 @@ function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedB
     const gridCols = maxCol + 1;
     const gridRows = maxRow + 1;
     
-    const totalPixelsWidth = gridCols * 32;
-    const totalPixelsHeight = gridRows * 32;
+    const totalPixelsWidth = gridCols * boardTileSize;
+    const totalPixelsHeight = gridRows * boardTileSize;
     
     // Calculate size to fit viewport
     const maxCanvasWidth = window.innerWidth * 0.75; // Leave space for color palette
@@ -182,12 +187,12 @@ function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedB
 
     // Draw each board
     result.boards.forEach(board => {
-      const boardStartX = board.position.col * 32 * tileSize;
-      const boardStartY = board.position.row * 32 * tileSize;
+      const boardStartX = board.position.col * boardTileSize * tileSize;
+      const boardStartY = board.position.row * boardTileSize * tileSize;
 
       // Draw each pixel as a tile
-      for (let y = 0; y < 32; y++) {
-        for (let x = 0; x < 32; x++) {
+      for (let y = 0; y < boardTileSize; y++) {
+        for (let x = 0; x < boardTileSize; x++) {
           const color = board.pixels[y]?.[x] || '#FFFFFF';
           const pixelX = boardStartX + (x * tileSize);
           const pixelY = boardStartY + (y * tileSize);
@@ -199,7 +204,7 @@ function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedB
       // Draw board boundary
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
-      ctx.strokeRect(boardStartX, boardStartY, 32 * tileSize, 32 * tileSize);
+      ctx.strokeRect(boardStartX, boardStartY, boardTileSize * tileSize, boardTileSize * tileSize);
       
       // Add board label
       ctx.fillStyle = '#000000';
@@ -263,6 +268,7 @@ function ExpandedBrickEditor({ result, selectedColor, onPixelChange }: ExpandedB
 
 export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey }: PixelEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const boardTileSize = getBoardTileSize(result);
   const [selectedColor, setSelectedColor] = useState<string>('#000000');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -357,8 +363,8 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
     const totalRows = Math.max(...editedResult.boards.map(b => b.position.row + 1));
     const scaledTileSize = tileSize * zoomLevel;
 
-    canvas.width = totalCols * 32 * scaledTileSize;
-    canvas.height = totalRows * 32 * scaledTileSize;
+    canvas.width = totalCols * boardTileSize * scaledTileSize;
+    canvas.height = totalRows * boardTileSize * scaledTileSize;
 
     // Clear canvas
     ctx.fillStyle = '#f0f0f0';
@@ -370,18 +376,18 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
 
     // Draw each board
     editedResult.boards.forEach(board => {
-      const boardStartX = board.position.col * 32 * scaledTileSize;
-      const boardStartY = board.position.row * 32 * scaledTileSize;
+      const boardStartX = board.position.col * boardTileSize * scaledTileSize;
+      const boardStartY = board.position.row * boardTileSize * scaledTileSize;
 
       // Highlight selected board
       if (selectedBoard === board.id) {
         ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
-        ctx.fillRect(boardStartX - 2, boardStartY - 2, 32 * scaledTileSize + 4, 32 * scaledTileSize + 4);
+        ctx.fillRect(boardStartX - 2, boardStartY - 2, boardTileSize * scaledTileSize + 4, boardTileSize * scaledTileSize + 4);
       }
 
       // Draw pixels
-      for (let y = 0; y < 32; y++) {
-        for (let x = 0; x < 32; x++) {
+      for (let y = 0; y < boardTileSize; y++) {
+        for (let x = 0; x < boardTileSize; x++) {
           const color = board.pixels[y]?.[x] || '#FFFFFF';
           const pixelX = boardStartX + (x * scaledTileSize);
           const pixelY = boardStartY + (y * scaledTileSize);
@@ -403,7 +409,7 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
       // Draw board boundary
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
-      ctx.strokeRect(boardStartX, boardStartY, 32 * scaledTileSize, 32 * scaledTileSize);
+      ctx.strokeRect(boardStartX, boardStartY, boardTileSize * scaledTileSize, boardTileSize * scaledTileSize);
 
       // Add board label
       ctx.fillStyle = '#000000';
@@ -426,22 +432,22 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
 
     // Find which board and pixel was clicked
     const board = editedResult.boards.find(b => {
-      const boardStartX = b.position.col * 32 * tileSize;
-      const boardStartY = b.position.row * 32 * tileSize;
-      const boardEndX = boardStartX + (32 * tileSize);
-      const boardEndY = boardStartY + (32 * tileSize);
+      const boardStartX = b.position.col * boardTileSize * tileSize;
+      const boardStartY = b.position.row * boardTileSize * tileSize;
+      const boardEndX = boardStartX + (boardTileSize * tileSize);
+      const boardEndY = boardStartY + (boardTileSize * tileSize);
 
       return x >= boardStartX && x < boardEndX && y >= boardStartY && y < boardEndY;
     });
 
     if (!board) return;
 
-    const boardStartX = board.position.col * 32 * tileSize;
-    const boardStartY = board.position.row * 32 * tileSize;
+    const boardStartX = board.position.col * boardTileSize * tileSize;
+    const boardStartY = board.position.row * boardTileSize * tileSize;
     const pixelX = Math.floor((x - boardStartX) / tileSize);
     const pixelY = Math.floor((y - boardStartY) / tileSize);
 
-    if (pixelX >= 0 && pixelX < 32 && pixelY >= 0 && pixelY < 32) {
+    if (pixelX >= 0 && pixelX < boardTileSize && pixelY >= 0 && pixelY < boardTileSize) {
       const oldColor = board.pixels[pixelY]?.[pixelX] || '#FFFFFF';
       
       if (oldColor !== selectedColor) {
@@ -462,7 +468,7 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
         const targetBoard = updatedResult.boards.find(b => b.id === board.id);
         if (targetBoard) {
           if (!targetBoard.pixels[pixelY]) {
-            targetBoard.pixels[pixelY] = new Array(32).fill('#FFFFFF');
+            targetBoard.pixels[pixelY] = new Array(boardTileSize).fill('#FFFFFF');
           }
           targetBoard.pixels[pixelY][pixelX] = selectedColor;
         }

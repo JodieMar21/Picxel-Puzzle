@@ -72,25 +72,29 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
     // Use the direct row and column values
     const gridCols = boardCols;
     const gridRows = boardRows;
+    const boardTileSize =
+      result.boardTileSize ??
+      result.boards[0]?.pixels?.length ??
+      32;
 
-    const totalPixelsWidth = gridCols * 32;
-    const totalPixelsHeight = gridRows * 32;
+    const totalPixelsWidth = gridCols * boardTileSize;
+    const totalPixelsHeight = gridRows * boardTileSize;
     
-    // Set tile size for clear visibility - calculate to fit viewport for expanded mode
-    let tileSize;
+    // Set pixel draw size for clear visibility - calculate to fit viewport for expanded mode
+    let drawSize;
     if (expandedMode) {
       // Calculate size to fit both width and height within 95% of viewport
       const maxCanvasWidth = window.innerWidth * 0.95;
       const maxCanvasHeight = window.innerHeight * 0.95;
       const tileSizeByWidth = maxCanvasWidth / totalPixelsWidth;
       const tileSizeByHeight = maxCanvasHeight / totalPixelsHeight;
-      tileSize = Math.max(6, Math.floor(Math.min(tileSizeByWidth, tileSizeByHeight)));
+      drawSize = Math.max(6, Math.floor(Math.min(tileSizeByWidth, tileSizeByHeight)));
     } else {
-      tileSize = Math.max(8, Math.min(20, 800 / totalPixelsWidth));
+      drawSize = Math.max(8, Math.min(20, 800 / totalPixelsWidth));
     }
     
-    canvas.width = totalPixelsWidth * tileSize;
-    canvas.height = totalPixelsHeight * tileSize;
+    canvas.width = totalPixelsWidth * drawSize;
+    canvas.height = totalPixelsHeight * drawSize;
 
     // Clear canvas
     ctx.fillStyle = '#f0f0f0';
@@ -98,28 +102,28 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
 
     // Draw each board
     result.boards.forEach(board => {
-      const boardStartX = board.position.col * 32 * tileSize;
-      const boardStartY = board.position.row * 32 * tileSize;
+      const boardStartX = board.position.col * boardTileSize * drawSize;
+      const boardStartY = board.position.row * boardTileSize * drawSize;
 
       // Draw each pixel in the board as a tile
-      for (let y = 0; y < 32; y++) {
-        for (let x = 0; x < 32; x++) {
+      for (let y = 0; y < boardTileSize; y++) {
+        for (let x = 0; x < boardTileSize; x++) {
           const color = board.pixels[y]?.[x] || '#FFFFFF';
-          const pixelX = boardStartX + (x * tileSize);
-          const pixelY = boardStartY + (y * tileSize);
+          const pixelX = boardStartX + (x * drawSize);
+          const pixelY = boardStartY + (y * drawSize);
           
-          drawBrickStud(ctx, pixelX, pixelY, tileSize, color);
+          drawBrickStud(ctx, pixelX, pixelY, drawSize, color);
         }
       }
 
       // Draw board boundary
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
-      ctx.strokeRect(boardStartX, boardStartY, 32 * tileSize, 32 * tileSize);
+      ctx.strokeRect(boardStartX, boardStartY, boardTileSize * drawSize, boardTileSize * drawSize);
       
       // Add board label
       ctx.fillStyle = '#000000';
-      ctx.font = `bold ${Math.max(12, tileSize)}px Arial`;
+      ctx.font = `bold ${Math.max(12, drawSize)}px Arial`;
       ctx.fillText(board.id, boardStartX + 10, boardStartY + 25);
     });
 
@@ -146,14 +150,14 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
   // Normal mode - full component with container
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-lg p-4 border">
-        <h4 className="text-md font-medium text-gray-900 mb-3">Brick View</h4>
-        <p className="text-sm text-gray-600 mb-4">
+      <div className="rounded-2xl p-4 border border-border bg-card/70">
+        <h4 className="text-md font-medium text-foreground mb-3">Brick View</h4>
+        <p className="text-sm text-muted-foreground mb-4">
           Each circle represents one tile stud. Build your mosaic by placing tiles according to this pattern.
         </p>
         
         <div 
-          className={`overflow-auto max-h-96 border rounded ${onClick ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+          className={`overflow-auto max-h-96 border rounded ${onClick ? 'cursor-pointer hover:bg-muted/40 transition-colors' : ''}`}
           onClick={onClick}
           title={onClick ? "Click to expand full view" : undefined}
         >
@@ -168,9 +172,13 @@ export default function LegoBrickDisplay({ result, boardCount, boardLayout, boar
           />
         </div>
         
-        <div className="mt-3 text-xs text-gray-500">
+        <div className="mt-3 text-xs text-muted-foreground">
           <p>• Each circular stud = 1 tile</p>
-          <p>• Black borders show board boundaries (32×32 tiles each)</p>
+          <p>
+            • Black borders show board boundaries (
+            {result.boardTileSize ?? result.boards[0]?.pixels?.length ?? 32}×
+            {result.boardTileSize ?? result.boards[0]?.pixels?.length ?? 32} tiles each)
+          </p>
           <p>• Board labels (A1, B1, etc.) show assembly order</p>
           {onClick && <p className="font-medium">• Click image to expand full view</p>}
         </div>

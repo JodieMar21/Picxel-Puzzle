@@ -111,17 +111,17 @@ export default function ImageUpload({ onImageUpload, uploadedImage, imagePreview
   };
 
   return (
-    <Card>
+    <Card className="rounded-2xl border-border bg-card/70 shadow-sm backdrop-blur-sm overflow-hidden">
       <CardContent className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Your Image</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Upload Your Image</h3>
         
         {!uploadedImage ? (
           <>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors duration-200 ${
                 isDragging 
-                  ? 'border-primary bg-blue-50' 
-                  : 'border-gray-300 hover:border-primary hover:bg-blue-50'
+                  ? "border-primary bg-primary/15"
+                  : "border-border bg-muted/20 hover:border-primary/60 hover:bg-muted/40"
               }`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
@@ -129,14 +129,14 @@ export default function ImageUpload({ onImageUpload, uploadedImage, imagePreview
               onClick={() => document.getElementById('file-input')?.click()}
             >
               <div className="space-y-4">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                  <CloudUpload className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+                  <CloudUpload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-lg font-medium text-gray-900">Drop your image here or click to browse</p>
-                  <p className="text-sm text-gray-500 mt-1">Supports PNG, JPG, JPEG up to 10MB</p>
+                  <p className="text-lg font-medium text-foreground">Drop your image here or click to browse</p>
+                  <p className="text-sm text-muted-foreground mt-1">Supports PNG, JPG, JPEG up to 10MB</p>
                 </div>
-                <Button>Choose File</Button>
+                <Button className="rounded-xl">Choose File</Button>
               </div>
             </div>
 
@@ -150,7 +150,7 @@ export default function ImageUpload({ onImageUpload, uploadedImage, imagePreview
 
             {isUploading && (
               <div className="mt-4">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
                   <span>Uploading image...</span>
                   <span>{uploadProgress}%</span>
                 </div>
@@ -160,13 +160,12 @@ export default function ImageUpload({ onImageUpload, uploadedImage, imagePreview
           </>
         ) : (
           <div className="space-y-4">
-            {/* File Info */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <ImageIcon className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium text-gray-900">{uploadedImage.name}</p>
-                  <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border">
+              <div className="flex items-center space-x-3 min-w-0">
+                <ImageIcon className="w-5 h-5 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground truncate">{uploadedImage.name}</p>
+                  <p className="text-sm text-muted-foreground">
                     {formatFileSize(uploadedImage.size)}
                   </p>
                 </div>
@@ -176,11 +175,10 @@ export default function ImageUpload({ onImageUpload, uploadedImage, imagePreview
               </Button>
             </div>
 
-            {/* Image Preview */}
             {imagePreview && (
               <div>
-                <h4 className="text-md font-medium text-gray-900 mb-3">Original Image</h4>
-                <div className="bg-gray-100 rounded-lg overflow-hidden">
+                <h4 className="text-md font-medium text-foreground mb-3">Original Image</h4>
+                <div className="bg-muted/40 rounded-xl overflow-hidden border border-border">
                   <img 
                     src={imagePreview} 
                     alt="Original uploaded image" 
