@@ -11,6 +11,7 @@ import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 import ImageEditor from "@/components/image-editor";
 import FractixLoader from "@/components/fractix-loader";
+import { getAppSettings } from "@/features/settings/storage";
 import { useAppSettings } from "@/features/settings/use-app-settings";
 
 interface BoardConfigurationProps {
@@ -63,7 +64,7 @@ export default function BoardConfiguration({
       formData.append('boardLayout', data.boardLayout);
       formData.append('boardRows', data.boardRows.toString());
       formData.append('boardCols', data.boardCols.toString());
-      formData.append('tileSize', String(tileSize));
+      formData.append('tileSize', String(getAppSettings().tileSize));
       
       // Use adjusted image if available, otherwise original
       if (data.adjustedImageData) {

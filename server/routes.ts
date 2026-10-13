@@ -339,11 +339,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const { name, boardCount, boardLayout, boardRows, boardCols } = req.body;
+      const { name, boardCount, boardLayout, boardRows, boardCols, tileSize } = req.body;
 
       if (!name || !boardCount || !boardLayout) {
         return res.status(400).json({ message: "Missing required fields" });
       }
+
+      const parsedTileSize = Number(tileSize);
+      const pendingTileSize =
+        Number.isFinite(parsedTileSize) && [16, 24, 32, 48].includes(parsedTileSize)
+          ? parsedTileSize
+          : 32;
 
       // Create project
       const project = await storage.createProject({
@@ -355,7 +361,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         boardCols: boardCols ? parseInt(boardCols, 10) : undefined,
       });
 
-      res.json(project);
+      // Persist tile size for processing (no dedicated DB column yet).
+      const withTileSize = await storage.updateProject(project.id, {
+        colorData: { pendingTileSize },
+      });
+
+      res.json(withTileSize ?? project);
     } catch (error: any) {
       console.error("Upload error:", error); // Log the full error for debugging
       res.status(500).json({ message: "Upload failed", error: error.message }); // Return error details
@@ -370,12 +381,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      const requestedTileSize = Number(req.body?.tileSize);
-      const boardSize =
-        Number.isFinite(requestedTileSize) &&
-        [16, 24, 32, 48].includes(requestedTileSize)
-          ? requestedTileSize
-          : 32; // Each board is tileSize x tileSize tiles
+      const bodyTileSize = Number(req.body?.tileSize);
+      const pendingTileSize = Number(
+        (project.colorData as { pendingTileSize?: number } | null)?.pendingTileSize,
+      );
+      const requestedTileSize = [bodyTileSize, pendingTileSize].find(
+        (value) => Number.isFinite(value) && [16, 24, 32, 48].includes(value),
+      );
+      const boardSize = requestedTileSize ?? 32; // Each board is tileSize x tileSize tiles
+      console.log(
+        `[process] project=${project.id} boardSize=${boardSize} bodyTile=${bodyTileSize} pendingTile=${pendingTileSize}`,
+      );
       let gridCols, gridRows;
 
       // Use stored boardRows and boardCols if available, otherwise fall back to layout parsing
@@ -516,7 +532,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedProject = await storage.updateProject(req.params.id, {
         pixelatedImageUrl: pixelatedImageData,
-        colorData: { colorMap, boards, totalTiles: totalWidth * totalHeight },
+        colorData: {
+          colorMap,
+          boards,
+          totalTiles: totalWidth * totalHeight,
+          boardTileSize: boardSize,
+        },
         pixelationResult,
         status: "completed",
       });

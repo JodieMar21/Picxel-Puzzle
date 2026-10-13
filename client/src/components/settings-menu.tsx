@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 type ThemeChoice = "light" | "dark";
 
@@ -37,6 +38,7 @@ export default function SettingsMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
   const { settings, patchSettings } = useAppSettings();
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -137,9 +139,15 @@ export default function SettingsMenu() {
                 <Label htmlFor="settings-tile-size">Tile size (per board)</Label>
                 <Select
                   value={String(settings.tileSize)}
-                  onValueChange={(value) =>
-                    patchSettings({ tileSize: Number(value) as TileSizeOption })
-                  }
+                  onValueChange={(value) => {
+                    const tileSize = Number(value) as TileSizeOption;
+                    patchSettings({ tileSize });
+                    toast({
+                      title: `Tile size set to ${tileSize}×${tileSize}`,
+                      description:
+                        "Applies to the next mosaic you generate. Go back to Configure and start pixelation again.",
+                    });
+                  }}
                 >
                   <SelectTrigger id="settings-tile-size">
                     <SelectValue />
@@ -152,6 +160,9 @@ export default function SettingsMenu() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Changes apply on the next Generate — not to the current Results view.
+                </p>
               </div>
 
               <div className="space-y-1.5">

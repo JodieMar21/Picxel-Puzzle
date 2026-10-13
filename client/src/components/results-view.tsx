@@ -12,6 +12,7 @@ import PixelEditor from "./pixel-editor";
 import FractixLoader from "./fractix-loader";
 import type { PixelationResult } from "@shared/schema";
 import { calculateEstimatedBuildTime, getDifficultyLevel, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
+import { useAppSettings } from "@/features/settings/use-app-settings";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
 
@@ -28,12 +29,19 @@ interface ResultsViewProps {
 
 export default function ResultsView({ results, boardCount, boardLayout, boardRows, boardCols, projectId, onGoBack }: ResultsViewProps) {
   const { toast } = useToast();
+  const { settings } = useAppSettings();
   const { pixelatedImageData, colorMap, boards, totalTiles } = results;
   const [isEditing, setIsEditing] = useState(false);
   const [editedResults, setEditedResults] = useState<PixelationResult>(results);
   const [showExpandedView, setShowExpandedView] = useState(false);
   const [visualGuides, setVisualGuides] = useState<string[]>([]);
   const [showVisualGuides, setShowVisualGuides] = useState(false);
+
+  const boardTileSize =
+    editedResults.boardTileSize ??
+    editedResults.boards[0]?.pixels?.length ??
+    32;
+  const settingsTileDiffers = settings.tileSize !== boardTileSize;
 
   const saveToAppMutation = useMutation({
     mutationFn: async () => {
@@ -252,14 +260,15 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
   const currentResults = editedResults; // Always use edited results to show saved changes
 
   const getBoardPreview = (board: any) => {
-    // Create a simplified 8x8 preview from the 32x32 board
+    // Create a simplified 8x8 preview from the full board
     const previewSize = 8;
+    const sourceSize = board?.pixels?.length || boardTileSize;
     const preview = [];
     
     for (let y = 0; y < previewSize; y++) {
       for (let x = 0; x < previewSize; x++) {
-        const sourceY = Math.floor((y / previewSize) * 32);
-        const sourceX = Math.floor((x / previewSize) * 32);
+        const sourceY = Math.floor((y / previewSize) * sourceSize);
+        const sourceX = Math.floor((x / previewSize) * sourceSize);
         const color = board.pixels[sourceY]?.[sourceX] || '#FFFFFF';
         preview.push(color);
       }
@@ -300,6 +309,30 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
           statusLabel="Saving your mosaic…"
           animateProgress
         />
+      )}
+
+      {settingsTileDiffers && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground">
+          <p className="font-medium">
+            Settings tile size is {settings.tileSize}×{settings.tileSize}, but this result used{" "}
+            {boardTileSize}×{boardTileSize}.
+          </p>
+          <p className="text-muted-foreground mt-1">
+            Go back to Configure and run{" "}
+            <span className="font-medium text-foreground">Start Pixelation</span> again to apply the
+            new tile size.
+          </p>
+          {onGoBack && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl"
+              onClick={onGoBack}
+            >
+              Back to Configuration
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Header with Back Button and Mode Toggle */}
@@ -348,8 +381,8 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                   {(() => {
                     const maxCol = Math.max(...currentResults.boards.map(b => b.position.col));
                     const maxRow = Math.max(...currentResults.boards.map(b => b.position.row));
-                    const totalWidth = (maxCol + 1) * 32;
-                    const totalHeight = (maxRow + 1) * 32;
+                    const totalWidth = (maxCol + 1) * boardTileSize;
+                    const totalHeight = (maxRow + 1) * boardTileSize;
                     return `${totalWidth} × ${totalHeight} tiles`;
                   })()}
                 </p>
@@ -430,7 +463,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                                   {board.id}
                                 </div>
                                 <div className="absolute bottom-1 left-1 text-xs text-black font-medium bg-card bg-opacity-80 px-1 rounded">
-                                  32×32
+                                  {boardTileSize}×{boardTileSize}
                                 </div>
                               </>
                             )}
@@ -444,7 +477,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
             </div>
 
             <div className="text-xs text-muted-foreground mb-3">
-              Each outlined square represents one 32×32 baseplate. <span className="font-medium">Click image to expand full view.</span>
+              Each outlined square represents one {boardTileSize}×{boardTileSize} baseplate. <span className="font-medium">Click image to expand full view.</span>
             </div>
             
             <div className="flex flex-wrap gap-2">
@@ -558,7 +591,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Individual Board Construction Guides</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Each board is a 32×32 LEGO baseplate. Use these previews to build section by section.
+            Each board is a {boardTileSize}×{boardTileSize} LEGO baseplate. Use these previews to build section by section.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -608,7 +641,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                       </div>
                       <div className="flex justify-between">
                         <span>Size:</span>
-                        <span className="font-medium">32×32</span>
+                        <span className="font-medium">{boardTileSize}×{boardTileSize}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -620,7 +653,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
           <div className="mt-4 p-4 bg-primary/10 rounded-lg">
             <h4 className="text-sm font-medium text-foreground mb-2">How to use these guides:</h4>
             <ul className="text-sm text-foreground/90 space-y-1">
-              <li>• Each board shows a simplified 8×8 preview of the full 32×32 pattern</li>
+              <li>• Each board shows a simplified 8×8 preview of the full {boardTileSize}×{boardTileSize} pattern</li>
               <li>• Build boards in the order shown (A1, B1, A2, B2, etc.)</li>
               <li>• Each colored square represents 4×4 tiles in the final build</li>
               <li>• Use the colour key above to match brick tiles to colours</li>
@@ -734,7 +767,7 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
           <div className="mt-4 p-4 bg-primary/10 rounded-lg">
             <h4 className="text-sm font-medium text-foreground mb-2">How to use these guides:</h4>
             <ul className="text-sm text-foreground/90 space-y-1">
-              <li>• Each guide shows one 32×32 baseplate</li>
+              <li>• Each guide shows one {boardTileSize}×{boardTileSize} baseplate</li>
               <li>• Numbers around the edges show row/column positions</li>
               <li>• Each coloured square represents one tile</li>
               <li>• Use the colour legend at the bottom to match your pieces</li>
