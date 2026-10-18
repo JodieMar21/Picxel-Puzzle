@@ -31,9 +31,11 @@ export default function ProcessingView({ projectId, onComplete }: ProcessingView
 
   const processImageMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { tileSize } = getAppSettings();
+      const { tileSize, qualityMode, ownedColorHexes } = getAppSettings();
       const response = await apiRequest("POST", `/api/projects/${id}/process`, {
         tileSize,
+        qualityMode,
+        ownedColorHexes,
       });
       return response.json();
     },

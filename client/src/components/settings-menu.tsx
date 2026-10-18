@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Moon, Settings, Sun } from "lucide-react";
+import { Moon, Settings, Sun, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAppSettings } from "@/features/settings/use-app-settings";
@@ -7,10 +7,13 @@ import {
   MAX_MAX_BOARDS,
   MIN_MAX_BOARDS,
   TILE_SIZE_OPTIONS,
+  type QualityMode,
   type TileSizeOption,
 } from "@/features/settings/types";
+import { BRICK_COLORS } from "@/lib/lego-colors";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -35,10 +38,12 @@ const THEME_OPTIONS: {
 export default function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
   const { settings, patchSettings } = useAppSettings();
   const { toast } = useToast();
+  const isDesktop = typeof window !== "undefined" && !!window.desktopApi?.checkForUpdates;
 
   useEffect(() => {
     setMounted(true);
@@ -47,6 +52,23 @@ export default function SettingsMenu() {
       setTheme("light");
     }
   }, [theme, setTheme]);
+
+  useEffect(() => {
+    if (!window.desktopApi?.onUpdaterEvent) return;
+    return window.desktopApi.onUpdaterEvent((event) => {
+      if (event.type === "available") {
+        toast({
+          title: "Update available",
+          description: `Fractix ${event.version} is downloading…`,
+        });
+      } else if (event.type === "downloaded") {
+        toast({
+          title: "Update ready",
+          description: `Fractix ${event.version} will install on restart.`,
+        });
+      }
+    });
+  }, [toast]);
 
   useEffect(() => {
     if (!open) return;
@@ -216,6 +238,135 @@ export default function SettingsMenu() {
                   </Label>
                 </div>
               </div>
+
+              <div className="space-y-1.5 border-t border-border pt-3">
+                <Label htmlFor="settings-quality">Generate quality</Label>
+                <Select
+                  value={settings.qualityMode}
+                  onValueChange={(value) => {
+                    patchSettings({ qualityMode: value as QualityMode });
+                    toast({
+                      title:
+                        value === "dithered"
+                          ? "Dithering enabled"
+                          : "Standard quality",
+                      description: "Applies on the next Generate.",
+                    });
+                  }}
+                >
+                  <SelectTrigger id="settings-quality">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard (nearest colour)</SelectItem>
+                    <SelectItem value="dithered">Dithered (smoother gradients)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Colours I own</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() =>
+                        patchSettings({
+                          ownedColorHexes: BRICK_COLORS.map((c) => c.hex.toUpperCase()),
+                        })
+                      }
+                    >
+                      Select all
+                    </button>
+                    <span className="text-muted-foreground text-xs">·</span>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:underline"
+                      onClick={() => patchSettings({ ownedColorHexes: [] })}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Optional. Leave empty or select all to use the full palette. Otherwise only
+                  checked colours are used on the next Generate.
+                </p>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 rounded-xl border border-border p-2">
+                  {BRICK_COLORS.map((color) => {
+                    const hex = color.hex.toUpperCase();
+                    const checked = settings.ownedColorHexes.includes(hex);
+                    return (
+                      <label
+                        key={hex}
+                        className="flex items-center gap-2 text-xs cursor-pointer rounded-lg px-1.5 py-1 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => {
+                            const on = value === true;
+                            const next = on
+                              ? Array.from(new Set([...settings.ownedColorHexes, hex]))
+                              : settings.ownedColorHexes.filter((h) => h !== hex);
+                            patchSettings({ ownedColorHexes: next });
+                          }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded border border-border shrink-0"
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="text-foreground truncate">{color.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {settings.ownedColorHexes.length === 0
+                    ? "Using full palette (none selected)"
+                    : settings.ownedColorHexes.length === BRICK_COLORS.length
+                      ? `All ${BRICK_COLORS.length} colours selected`
+                      : `${settings.ownedColorHexes.length} of ${BRICK_COLORS.length} colours selected`}
+                </p>
+              </div>
+
+              {isDesktop && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <Label>Desktop updates</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-xl"
+                    disabled={checkingUpdate}
+                    onClick={async () => {
+                      setCheckingUpdate(true);
+                      try {
+                        const result = await window.desktopApi?.checkForUpdates?.();
+                        if (!result?.ok) {
+                          toast({
+                            title: "Could not check for updates",
+                            description: result?.message ?? "Try again later.",
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({
+                            title: "Checking for updates",
+                            description: result.version
+                              ? `Latest seen: ${result.version}`
+                              : "You're up to date, or a download will start shortly.",
+                          });
+                        }
+                      } finally {
+                        setCheckingUpdate(false);
+                      }
+                    }}
+                  >
+                    <RefreshCw className={cn("w-4 h-4 mr-2", checkingUpdate && "animate-spin")} />
+                    Check for updates
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

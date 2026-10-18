@@ -623,6 +623,23 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
     }
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   // Handle pixel changes in expanded editor
   const handleExpandedPixelChange = (boardId: string, x: number, y: number, newColor: string) => {
     const board = editedResult.boards.find(b => b.id === boardId);
@@ -657,10 +674,22 @@ export default function PixelEditor({ result, onSaveChanges, onGenerateColorKey 
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Pixel Editor</h3>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={handleUndo} disabled={undoStack.length === 0}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                title="Undo (Ctrl/Cmd+Z)"
+              >
                 <Undo className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleRedo} disabled={redoStack.length === 0}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                title="Redo (Ctrl/Cmd+Y)"
+              >
                 <Redo className="w-4 h-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={handleZoomOut}>
