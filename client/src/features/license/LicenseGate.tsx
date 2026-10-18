@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ExternalLink, Loader2, ShieldCheck } from "lucide-react";
+import FractixLoader from "@/components/fractix-loader";
 import StudioAtmosphere from "@/components/studio-atmosphere";
 import { apiUrl } from "@/lib/apiBase";
 import { configureLicenseHeaders } from "@/lib/queryClient";
@@ -196,9 +197,14 @@ export default function LicenseGate({ children }: PropsWithChildren) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
         <StudioAtmosphere />
-        <p className="text-muted-foreground relative z-10">Checking license…</p>
+        <FractixLoader
+          title="Checking license"
+          subtitle="Verifying your Fractix seat on this device"
+          statusLabel="Please wait until this finishes…"
+          animateProgress
+        />
       </div>
     );
   }

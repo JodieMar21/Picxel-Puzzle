@@ -282,15 +282,16 @@ export default function BoardConfiguration({
 
   if (createProjectMutation.isPending) {
     return (
-      <div className="relative min-h-[320px] rounded-2xl border border-border bg-card/70 overflow-hidden">
+      <>
         <FractixLoader
-          fullScreen={false}
           title="Creating your project"
           subtitle="Uploading image and preparing boards"
           statusLabel="Please wait until this finishes…"
           animateProgress
         />
-      </div>
+        {/* Keep layout height stable while the full-screen overlay is up */}
+        <div className="min-h-[320px]" aria-hidden />
+      </>
     );
   }
 
