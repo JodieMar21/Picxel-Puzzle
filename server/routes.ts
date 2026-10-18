@@ -122,11 +122,15 @@ function colorDistance(
   return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
 }
 
-function findClosestBrickColor(rgb: [number, number, number]): { name: string; hex: string } {
-  let closestColor = BRICK_COLORS[0];
+function findClosestBrickColor(
+  rgb: [number, number, number],
+  palette: { name: string; hex: string }[] = BRICK_COLORS,
+): { name: string; hex: string } {
+  const colors = palette.length > 0 ? palette : BRICK_COLORS;
+  let closestColor = colors[0];
   let minDistance = Infinity;
 
-  for (const color of BRICK_COLORS) {
+  for (const color of colors) {
     const brickRgb = hexToRgb(color.hex);
     const distance = colorDistance(rgb, brickRgb);
 
@@ -137,6 +141,63 @@ function findClosestBrickColor(rgb: [number, number, number]): { name: string; h
   }
 
   return closestColor;
+}
+
+function clampByte(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+/** Floyd–Steinberg dithering into the brick palette. */
+function ditherToBrickPalette(
+  data: Buffer,
+  width: number,
+  height: number,
+  channels: number,
+  palette: { name: string; hex: string }[],
+): string[][] {
+  const buffer: number[][][] = [];
+  for (let y = 0; y < height; y++) {
+    const row: number[][] = [];
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * channels;
+      row.push([data[idx] || 0, data[idx + 1] || 0, data[idx + 2] || 0]);
+    }
+    buffer.push(row);
+  }
+
+  const result: string[][] = [];
+  for (let y = 0; y < height; y++) {
+    const outRow: string[] = [];
+    for (let x = 0; x < width; x++) {
+      const old = buffer[y][x];
+      const rgb: [number, number, number] = [
+        clampByte(old[0]),
+        clampByte(old[1]),
+        clampByte(old[2]),
+      ];
+      const brick = findClosestBrickColor(rgb, palette);
+      const nr = hexToRgb(brick.hex);
+      outRow.push(brick.hex);
+
+      const errR = rgb[0] - nr[0];
+      const errG = rgb[1] - nr[1];
+      const errB = rgb[2] - nr[2];
+
+      const diffuse = (nx: number, ny: number, factor: number) => {
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return;
+        buffer[ny][nx][0] += errR * factor;
+        buffer[ny][nx][1] += errG * factor;
+        buffer[ny][nx][2] += errB * factor;
+      };
+
+      diffuse(x + 1, y, 7 / 16);
+      diffuse(x - 1, y + 1, 3 / 16);
+      diffuse(x, y + 1, 5 / 16);
+      diffuse(x + 1, y + 1, 1 / 16);
+    }
+    result.push(outRow);
+  }
+  return result;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -389,8 +450,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (value) => Number.isFinite(value) && [16, 24, 32, 48].includes(value),
       );
       const boardSize = requestedTileSize ?? 32; // Each board is tileSize x tileSize tiles
+      const useDithering = req.body?.qualityMode === "dithered" || req.body?.dithering === true;
+      const ownedHexes: string[] = Array.isArray(req.body?.ownedColorHexes)
+        ? req.body.ownedColorHexes
+            .filter((h: unknown): h is string => typeof h === "string")
+            .map((h: string) => h.trim().toUpperCase())
+        : [];
+      const activePalette =
+        ownedHexes.length > 0
+          ? BRICK_COLORS.filter((c) => ownedHexes.includes(c.hex.toUpperCase()))
+          : BRICK_COLORS;
+      const palette = activePalette.length > 0 ? activePalette : BRICK_COLORS;
       console.log(
-        `[process] project=${project.id} boardSize=${boardSize} bodyTile=${bodyTileSize} pendingTile=${pendingTileSize}`,
+        `[process] project=${project.id} boardSize=${boardSize} bodyTile=${bodyTileSize} pendingTile=${pendingTileSize} dither=${useDithering} palette=${palette.length}`,
       );
       let gridCols, gridRows;
 
@@ -434,32 +506,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .toBuffer({ resolveWithObject: true });
 
       const { data, info } = imageBuffer;
-      const pixelatedData: string[][] = [];
       const colorUsage = new Map<string, number>();
 
       console.log(`Processing image: ${info.width}x${info.height}, channels: ${info.channels}`);
 
-      for (let y = 0; y < info.height; y++) {
-        const row: string[] = [];
-        for (let x = 0; x < info.width; x++) {
-          const idx = (y * info.width + x) * info.channels;
-          const rgb: [number, number, number] = [
-            data[idx] || 0,
-            data[idx + 1] || 0,
-            data[idx + 2] || 0,
-          ];
-
-          if (x < 5 && y < 5) {
-            console.log(`Pixel [${x},${y}]: RGB(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);
+      let pixelatedData: string[][];
+      if (useDithering) {
+        pixelatedData = ditherToBrickPalette(
+          data,
+          info.width,
+          info.height,
+          info.channels,
+          palette,
+        );
+      } else {
+        pixelatedData = [];
+        for (let y = 0; y < info.height; y++) {
+          const row: string[] = [];
+          for (let x = 0; x < info.width; x++) {
+            const idx = (y * info.width + x) * info.channels;
+            const rgb: [number, number, number] = [
+              data[idx] || 0,
+              data[idx + 1] || 0,
+              data[idx + 2] || 0,
+            ];
+            const brickColor = findClosestBrickColor(rgb, palette);
+            row.push(brickColor.hex);
           }
+          pixelatedData.push(row);
+        }
+      }
 
-          const brickColor = findClosestBrickColor(rgb);
-          row.push(brickColor.hex);
-
-          const key = `${brickColor.name}|${brickColor.hex}`;
+      for (let y = 0; y < pixelatedData.length; y++) {
+        for (let x = 0; x < pixelatedData[y].length; x++) {
+          const hex = pixelatedData[y][x];
+          const brick =
+            palette.find((c) => c.hex.toUpperCase() === hex.toUpperCase()) ||
+            findClosestBrickColor(hexToRgb(hex), palette);
+          const key = `${brick.name}|${brick.hex}`;
           colorUsage.set(key, (colorUsage.get(key) || 0) + 1);
         }
-        pixelatedData.push(row);
       }
 
       console.log(`Color mapping complete. Found ${colorUsage.size} unique colors`);

@@ -6,12 +6,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ImageUpload from "@/components/image-upload";
 import BoardConfiguration from "@/components/board-configuration";
 import ColorPalette from "@/components/color-palette";
+import SampleTemplates from "@/components/sample-templates";
 import ProcessingView from "@/components/processing-view";
 import ResultsView from "@/components/results-view";
 import ProfileModal from "@/components/profile-modal";
 import StudioShell from "@/components/studio-shell";
 import { getProfile } from "@/features/profile/storage";
 import { useAppSettings } from "@/features/settings/use-app-settings";
+import { consumeOpenProject } from "@/lib/project-session";
 import type { PixelationResult } from "@shared/schema";
 
 export default function Home() {
@@ -33,6 +35,20 @@ export default function Home() {
 
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const opened = consumeOpenProject();
+    if (!opened?.pixelationResult) return;
+    setProjectId(opened.projectId);
+    setProjectName(opened.name);
+    setBoardCount(opened.boardCount);
+    setBoardLayout(opened.boardLayout);
+    setBoardRows(opened.boardRows || Math.max(1, Math.ceil(Math.sqrt(opened.boardCount))));
+    setBoardCols(opened.boardCols || Math.max(1, Math.ceil(Math.sqrt(opened.boardCount))));
+    setResults(opened.pixelationResult);
+    setProcessing(false);
+    setCurrentStep(3);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -218,6 +234,10 @@ export default function Home() {
                 uploadedImage={uploadedImage}
                 imagePreview={imagePreview}
               />
+
+              {!uploadedImage && (
+                <SampleTemplates onSelect={handleImageUpload} />
+              )}
 
               {uploadedImage && imagePreview && (
                 <BoardConfiguration

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { Trash2, Eye, Calendar, Download, ArrowLeft, Printer, X } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Trash2, Eye, Calendar, Download, ArrowLeft, Printer, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { apiUrl } from "@/lib/apiBase";
 import { queryClient, getCurrentLicenseHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { generateVisualColorKey } from "@/lib/pixelation";
+import { stashOpenProject } from "@/lib/project-session";
 import type { Project, PixelationResult } from "@shared/schema";
 
 interface ProjectWithPixelation extends Omit<Project, 'pixelationResult'> {
@@ -20,9 +21,35 @@ interface ProjectWithPixelation extends Omit<Project, 'pixelationResult'> {
 
 export default function Projects() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedProject, setSelectedProject] = useState<ProjectWithPixelation | null>(null);
   const [visualGuides, setVisualGuides] = useState<string[]>([]);
   const [showVisualGuides, setShowVisualGuides] = useState(false);
+
+  const handleOpenInStudio = (project: ProjectWithPixelation) => {
+    if (!project.pixelationResult) {
+      toast({
+        title: "Nothing to open",
+        description: "This project has no mosaic data yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+    stashOpenProject({
+      projectId: project.id,
+      name: project.name,
+      boardCount: project.boardCount,
+      boardLayout: project.boardLayout,
+      boardRows: project.boardRows,
+      boardCols: project.boardCols,
+      pixelationResult: project.pixelationResult,
+    });
+    setLocation("/");
+    toast({
+      title: "Opening in Studio",
+      description: "You can keep editing and re-save this mosaic.",
+    });
+  };
 
   const { data: projects = [], isLoading } = useQuery<ProjectWithPixelation[]>({
     queryKey: ["/api/projects"],
@@ -219,7 +246,16 @@ export default function Projects() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenInStudio(project)}
+                      className="flex-1 rounded-xl"
+                      disabled={!project.pixelationResult}
+                    >
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Open in Studio
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

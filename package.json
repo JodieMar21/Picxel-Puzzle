@@ -1,7 +1,7 @@
 {
   "name": "rest-express",
   "type": "module",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Fractix app (web and Electron desktop)",
   "author": "JodieMar21",
   "main": "dist-electron/main.cjs",

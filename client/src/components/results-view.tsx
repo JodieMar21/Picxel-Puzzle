@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { Download, Expand, FileText, Printer, Edit3, X, Save, ArrowLeft } from "lucide-react";
+import { Download, Expand, FileText, Printer, Edit3, X, Save, ArrowLeft, ShoppingCart, Blend } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useToast } from "@/hooks/use-toast";
 import LegoBrickDisplay from "./lego-brick-display";
 import PixelEditor from "./pixel-editor";
 import FractixLoader from "./fractix-loader";
+import BuildMode from "./build-mode";
 import type { PixelationResult } from "@shared/schema";
 import { calculateEstimatedBuildTime, getDifficultyLevel, generateConstructionGuideText, generateColorKeyDocument, generateVisualColorKey } from "@/lib/pixelation";
+import { downloadShoppingListCsv, downloadShoppingListExcel } from "@/lib/shopping-list";
+import { openConstructionPdfPack } from "@/lib/construction-pdf";
 import { useAppSettings } from "@/features/settings/use-app-settings";
 import { apiUrl } from "@/lib/apiBase";
 import { getCurrentLicenseHeaders } from "@/lib/queryClient";
@@ -36,6 +41,8 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
   const [showExpandedView, setShowExpandedView] = useState(false);
   const [visualGuides, setVisualGuides] = useState<string[]>([]);
   const [showVisualGuides, setShowVisualGuides] = useState(false);
+  const [mergeFrom, setMergeFrom] = useState<string>("");
+  const [mergeInto, setMergeInto] = useState<string>("");
 
   const boardTileSize =
     editedResults.boardTileSize ??
@@ -257,6 +264,92 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
     setEditedResults(updatedResult);
   };
 
+  const handleShoppingCsv = () => {
+    downloadShoppingListCsv(editedResults, `fractix-${projectId?.slice(0, 8) ?? "mosaic"}`);
+    toast({ title: "Shopping list downloaded", description: "CSV ready for Excel or Sheets." });
+  };
+
+  const handleShoppingExcel = () => {
+    downloadShoppingListExcel(editedResults, `fractix-${projectId?.slice(0, 8) ?? "mosaic"}`);
+    toast({ title: "Shopping list downloaded", description: "Excel-compatible .xls file saved." });
+  };
+
+  const handlePdfPack = () => {
+    if (!settings.exportPdf) {
+      toast({
+        title: "PDF export disabled",
+        description: "Enable PDF under Settings → Export formats.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      openConstructionPdfPack(editedResults, {
+        projectName: `Fractix mosaic`,
+        boardTileSize,
+      });
+      toast({
+        title: "Construction pack opened",
+        description: "Use Print → Save as PDF in the new window.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not open PDF pack",
+        description: error instanceof Error ? error.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMergeColors = () => {
+    if (!mergeFrom || !mergeInto || mergeFrom === mergeInto) {
+      toast({
+        title: "Pick two different colours",
+        description: "Choose a colour to replace and a colour to keep.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const boards = editedResults.boards.map((board) => ({
+      ...board,
+      pixels: board.pixels.map((row) =>
+        row.map((hex) => (hex.toUpperCase() === mergeFrom.toUpperCase() ? mergeInto : hex)),
+      ),
+    }));
+
+    const counts = new Map<string, { name: string; hex: string; count: number }>();
+    for (const board of boards) {
+      for (const row of board.pixels) {
+        for (const hex of row) {
+          const key = hex.toUpperCase();
+          const existing = counts.get(key);
+          if (existing) existing.count += 1;
+          else {
+            const named =
+              editedResults.colorMap.find((c) => c.hex.toUpperCase() === key) ||
+              results.colorMap.find((c) => c.hex.toUpperCase() === key);
+            counts.set(key, {
+              name: named?.name || "Custom Color",
+              hex: named?.hex || hex,
+              count: 1,
+            });
+          }
+        }
+      }
+    }
+
+    const next: PixelationResult = {
+      ...editedResults,
+      boards,
+      colorMap: Array.from(counts.values()),
+    };
+    setEditedResults(next);
+    setMergeFrom("");
+    setMergeInto("");
+    toast({ title: "Colours merged", description: "Pixels updated. Save to App to keep changes." });
+  };
+
   const currentResults = editedResults; // Always use edited results to show saved changes
 
   const getBoardPreview = (board: any) => {
@@ -352,20 +445,28 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
           )}
           <h2 className="text-2xl font-semibold text-foreground">Results</h2>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button 
-            variant="outline"
-            onClick={() => setIsEditing(true)}
-          >
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
             <Edit3 className="w-4 h-4 mr-2" />
             Edit Pixels
           </Button>
-          <Button 
-            variant="outline"
-            onClick={handleGenerateColorKey}
-          >
+          <Button variant="outline" onClick={handleGenerateColorKey}>
             <FileText className="w-4 h-4 mr-2" />
             Visual Guide
+          </Button>
+          {settings.exportPdf && (
+            <Button variant="outline" onClick={handlePdfPack}>
+              <Printer className="w-4 h-4 mr-2" />
+              PDF Pack
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleShoppingCsv}>
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            Shopping CSV
+          </Button>
+          <Button variant="outline" onClick={handleShoppingExcel}>
+            <Download className="w-4 h-4 mr-2" />
+            Shopping Excel
           </Button>
         </div>
       </div>
@@ -571,10 +672,75 @@ export default function ResultsView({ results, boardCount, boardLayout, boardRow
                 <Printer className="w-4 h-4 mr-2" />
                 Print Instructions
               </Button>
+              {settings.exportPdf && (
+                <Button onClick={handlePdfPack} variant="outline" className="w-full">
+                  <Printer className="w-4 h-4 mr-2" />
+                  PDF Construction Pack
+                </Button>
+              )}
+              <Button onClick={handleShoppingCsv} variant="outline" className="w-full">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Shopping List (CSV)
+              </Button>
+              <Button onClick={handleShoppingExcel} variant="outline" className="w-full">
+                <Download className="w-4 h-4 mr-2" />
+                Shopping List (Excel)
+              </Button>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-border space-y-3">
+              <h4 className="text-md font-medium text-foreground flex items-center gap-2">
+                <Blend className="w-4 h-4 text-primary" />
+                Merge colours
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Replace one colour with another across the whole mosaic.
+              </p>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Replace</Label>
+                  <Select value={mergeFrom} onValueChange={setMergeFrom}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Colour to remove" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editedResults.colorMap.map((c) => (
+                        <SelectItem key={`from-${c.hex}`} value={c.hex}>
+                          {c.name} ({c.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">With</Label>
+                  <Select value={mergeInto} onValueChange={setMergeInto}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Colour to keep" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editedResults.colorMap.map((c) => (
+                        <SelectItem key={`into-${c.hex}`} value={c.hex}>
+                          {c.name} ({c.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full rounded-xl" variant="secondary" onClick={handleMergeColors}>
+                  Merge colours
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <BuildMode
+        result={editedResults}
+        projectId={projectId}
+        boardTileSize={boardTileSize}
+      />
 
       {/* Brick Visualization */}
       <LegoBrickDisplay 

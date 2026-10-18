@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { autoUpdater } from "electron-updater";
 import { config as loadEnvFile } from "dotenv";
 import { existsSync } from "fs";
 import { delimiter, dirname, join } from "path";
@@ -6,6 +7,62 @@ import { spawn, type ChildProcess } from "child_process";
 
 let appWindow: BrowserWindow | null = null;
 let localServerProcess: ChildProcess | null = null;
+
+function setupAutoUpdater(): void {
+  if (isDev || !app.isPackaged) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    console.log(`[desktop] update available: ${info.version}`);
+    appWindow?.webContents.send("updater:event", {
+      type: "available",
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    appWindow?.webContents.send("updater:event", { type: "not-available" });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log(`[desktop] update downloaded: ${info.version}`);
+    appWindow?.webContents.send("updater:event", {
+      type: "downloaded",
+      version: info.version,
+    });
+    dialog
+      .showMessageBox({
+        type: "info",
+        title: "Update ready",
+        message: `Fractix ${info.version} is ready to install.`,
+        detail: "The app will restart to apply the update.",
+        buttons: ["Restart now", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall();
+      })
+      .catch(() => undefined);
+  });
+
+  autoUpdater.on("error", (error) => {
+    console.error("[desktop] updater error:", error);
+    appWindow?.webContents.send("updater:event", {
+      type: "error",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
+
+  // Delay so the window can load first
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+      console.error("[desktop] checkForUpdates failed:", error);
+    });
+  }, 8000);
+}
 
 const DEFAULT_SERVER_PORT = 5000;
 const ELECTRON_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
@@ -169,6 +226,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow(`http://127.0.0.1:${port}`);
+  setupAutoUpdater();
 });
 
 app.on("window-all-closed", () => {
@@ -197,4 +255,28 @@ ipcMain.handle("app:get-runtime", () => ({
 
 ipcMain.handle("shell:open-external", (_event, url: string) => {
   shell.openExternal(url);
+});
+
+ipcMain.handle("updater:check", async () => {
+  if (isDev || !app.isPackaged) {
+    return { ok: false, message: "Updates are only available in packaged desktop builds." };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return {
+      ok: true,
+      version: result?.updateInfo?.version ?? null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+});
+
+ipcMain.handle("updater:install", () => {
+  if (isDev || !app.isPackaged) return false;
+  autoUpdater.quitAndInstall();
+  return true;
 });
