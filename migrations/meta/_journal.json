@@ -22,6 +22,20 @@
       "when": 1775064579566,
       "tag": "0002_lively_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777080000000,
+      "tag": "0003_fractix_coach",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792751947099,
+      "tag": "0004_salty_next_avengers",
+      "breakpoints": true
     }
   ]
 }

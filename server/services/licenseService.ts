@@ -55,11 +55,23 @@ function nextValidationDate(now = new Date()): string {
   return new Date(now.getTime() + OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
+export type ActivationPrepared = {
+  licenseKeyHash: string;
+  deviceId: string;
+  deviceName?: string;
+  maxDevices: number;
+};
+
 export const licenseService = {
   verifyEntitlement,
 
-  async activate(input: { licenseKey: string; deviceId: string; deviceName?: string }) {
-    const keyHash = hashLicenseKey(input.licenseKey.trim());
+  async prepareActivation(
+    input:
+      | { licenseKey: string; deviceId: string; deviceName?: string }
+      | { licenseKeyHash: string; deviceId: string; deviceName?: string },
+  ): Promise<ActivationPrepared> {
+    const keyHash =
+      "licenseKey" in input ? hashLicenseKey(input.licenseKey.trim()) : input.licenseKeyHash;
     const dbResult = await validateWithDatabase(keyHash);
     if (!dbResult.valid) {
       throw new Error(dbResult.reason ?? "License validation failed.");
@@ -72,23 +84,32 @@ export const licenseService = {
       throw new Error(`Device limit reached (${deviceLimit}). Deactivate another device first.`);
     }
 
-    await storage.upsertLicenseActivation({
+    return {
       licenseKeyHash: keyHash,
       deviceId: input.deviceId,
       deviceName: input.deviceName,
+      maxDevices: deviceLimit,
+    };
+  },
+
+  async finishActivation(prepared: ActivationPrepared) {
+    await storage.upsertLicenseActivation({
+      licenseKeyHash: prepared.licenseKeyHash,
+      deviceId: prepared.deviceId,
+      deviceName: prepared.deviceName,
       isActive: true,
     });
     await storage.createLicenseEvent({
-      licenseKeyHash: keyHash,
-      deviceId: input.deviceId,
+      licenseKeyHash: prepared.licenseKeyHash,
+      deviceId: prepared.deviceId,
       eventType: "activated",
-      metadata: { deviceName: input.deviceName, maxDevices: deviceLimit },
+      metadata: { deviceName: prepared.deviceName, maxDevices: prepared.maxDevices },
     });
 
     const now = new Date();
     const payload: EntitlementPayload = {
-      licenseKeyHash: keyHash,
-      deviceId: input.deviceId,
+      licenseKeyHash: prepared.licenseKeyHash,
+      deviceId: prepared.deviceId,
       lastValidatedAt: now.toISOString(),
       nextCheckAt: nextValidationDate(now),
     };
@@ -96,9 +117,14 @@ export const licenseService = {
     return {
       entitlement: createEntitlement(payload),
       nextCheckAt: payload.nextCheckAt,
-      maxDevices: deviceLimit,
+      maxDevices: prepared.maxDevices,
       offlineGraceDays: OFFLINE_GRACE_DAYS,
     };
+  },
+
+  async activate(input: { licenseKey: string; deviceId: string; deviceName?: string }) {
+    const prepared = await this.prepareActivation(input);
+    return this.finishActivation(prepared);
   },
 
   async validate(input: { entitlement: string; deviceId: string; forceRemote?: boolean }) {

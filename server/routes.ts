@@ -2,13 +2,29 @@ import type { Express, Request } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { activateLicenseSchema, deactivateLicenseSchema, insertProjectSchema, validateLicenseSchema } from "@shared/schema";
+import {
+  activateLicense2faSchema,
+  activateLicenseSchema,
+  checkoutPlanSchema,
+  coachChatRequestSchema,
+  deactivateLicenseSchema,
+  license2faCodeSchema,
+  insertProjectSchema,
+  validateLicenseSchema,
+} from "@shared/schema";
 import multer, { FileFilterCallback } from "multer";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
 import { licenseService } from "./services/licenseService";
-import { createCheckoutSession, handleStripeWebhook, getLicenseKeyForSession } from "./services/stripeService";
+import {
+  createCheckoutSession,
+  handleStripeWebhook,
+  getLicenseKeyForSession,
+  resolvePriceIdForPlan,
+} from "./services/stripeService";
+import { getCoachAccountContext, runCoachChat } from "./services/coach/coachService";
+import { licenseTwoFactorService } from "./services/licenseTwoFactorService";
 import { log } from "./log";
 
 interface MulterRequest extends Request {
@@ -214,10 +230,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/license/activate", async (req, res) => {
     try {
       const payload = activateLicenseSchema.parse(req.body);
-      const result = await licenseService.activate(payload);
+      const result = await licenseTwoFactorService.activateWithOptional2fa(payload);
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message ?? "License activation failed." });
+    }
+  });
+
+  app.post("/api/license/activate/2fa", async (req, res) => {
+    try {
+      const payload = activateLicense2faSchema.parse(req.body);
+      const result = await licenseTwoFactorService.completeActivationWith2fa(payload);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Two-factor verification failed." });
+    }
+  });
+
+  async function licenseFromEntitlementHeaders(req: Request) {
+    const entitlement = req.header("x-license-entitlement");
+    const deviceId = req.header("x-device-id");
+    if (!entitlement || !deviceId) {
+      throw new Error("License entitlement required.");
+    }
+    const tokenPayload = licenseService.verifyEntitlement(entitlement);
+    if (tokenPayload.deviceId !== deviceId) {
+      throw new Error("License entitlement does not match this device.");
+    }
+    const license = await storage.getLicenseByHash(tokenPayload.licenseKeyHash);
+    if (!license) {
+      throw new Error("License not found.");
+    }
+    return license;
+  }
+
+  app.get("/api/license/2fa/status", async (req, res) => {
+    try {
+      const license = await licenseFromEntitlementHeaders(req);
+      res.json(await licenseTwoFactorService.getStatus(license));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Could not load two-factor status." });
+    }
+  });
+
+  app.post("/api/license/2fa/setup", async (req, res) => {
+    try {
+      const license = await licenseFromEntitlementHeaders(req);
+      const result = await licenseTwoFactorService.startSetup(license);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Could not start two-factor setup." });
+    }
+  });
+
+  app.post("/api/license/2fa/confirm", async (req, res) => {
+    try {
+      const license = await licenseFromEntitlementHeaders(req);
+      const { code } = license2faCodeSchema.parse(req.body ?? {});
+      res.json(await licenseTwoFactorService.confirmSetup(license, code));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Could not enable two-factor authentication." });
+    }
+  });
+
+  app.post("/api/license/2fa/cancel-setup", async (req, res) => {
+    try {
+      const license = await licenseFromEntitlementHeaders(req);
+      res.json(await licenseTwoFactorService.cancelSetup(license));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Could not cancel two-factor setup." });
+    }
+  });
+
+  app.post("/api/license/2fa/disable", async (req, res) => {
+    try {
+      const license = await licenseFromEntitlementHeaders(req);
+      const { code } = license2faCodeSchema.parse(req.body ?? {});
+      res.json(await licenseTwoFactorService.disable(license, code));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message ?? "Could not disable two-factor authentication." });
     }
   });
 
@@ -251,12 +342,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe checkout session creation
+  // Stripe checkout session creation — plan maps to STRIPE_PRICE_ID / STRIPE_PRICE_PRO_ID
   app.post("/api/checkout", async (req, res) => {
     try {
-      const priceId = req.body.priceId ?? process.env.STRIPE_PRICE_ID;
-      if (!priceId) {
-        return res.status(400).json({ message: "No Stripe price ID configured." });
+      const parsed = checkoutPlanSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid checkout plan. Use basic or pro." });
+      }
+      const plan = parsed.data.plan;
+      let priceId: string;
+      try {
+        priceId = resolvePriceIdForPlan(plan);
+      } catch (error: any) {
+        return res.status(400).json({ message: error.message ?? "Stripe price not configured for this plan." });
       }
 
       const rawBase =
@@ -268,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancelUrl: `${appBaseUrl}/`,
       });
 
-      res.json(result);
+      res.json({ ...result, plan });
     } catch (error: any) {
       console.error("Checkout error:", error);
       res.status(500).json({ message: error.message ?? "Failed to create checkout session." });
@@ -714,6 +812,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get brick colors
   app.get("/api/lego-colors", (req, res) => {
     res.json(BRICK_COLORS);
+  });
+
+  // Fractix Coach — requires license entitlement (middleware above)
+  app.get("/api/coach/account-context", async (req, res) => {
+    try {
+      const entitlement = req.header("x-license-entitlement")!;
+      const payload = licenseService.verifyEntitlement(entitlement);
+      const license = await storage.getLicenseByHash(payload.licenseKeyHash);
+      if (!license) {
+        return res.status(404).json({ message: "License not found." });
+      }
+      const snapshot = await getCoachAccountContext(license);
+      res.json(snapshot);
+    } catch (error: any) {
+      console.error("Coach account-context error:", error);
+      res.status(500).json({ message: error.message ?? "Failed to load account context." });
+    }
+  });
+
+  app.post("/api/coach/chat", async (req, res) => {
+    try {
+      const parsed = coachChatRequestSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid coach chat request.", issues: parsed.error.issues });
+      }
+
+      const entitlement = req.header("x-license-entitlement")!;
+      const deviceId = req.header("x-device-id")!;
+      const payload = licenseService.verifyEntitlement(entitlement);
+      const license = await storage.getLicenseByHash(payload.licenseKeyHash);
+      if (!license) {
+        return res.status(404).json({ message: "License not found." });
+      }
+      if (!license.isActive) {
+        return res.status(403).json({ message: "This license is inactive." });
+      }
+
+      const result = await runCoachChat({
+        license,
+        deviceId,
+        request: parsed.data,
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Coach chat error:", error);
+      const message = error.message ?? "Coach chat failed.";
+      const status = /Daily Coach limit/i.test(message) ? 503 : 500;
+      res.status(status).json({ message });
+    }
   });
 
   const httpServer = createServer(app);

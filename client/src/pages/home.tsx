@@ -14,6 +14,7 @@ import StudioShell from "@/components/studio-shell";
 import { getProfile } from "@/features/profile/storage";
 import { useAppSettings } from "@/features/settings/use-app-settings";
 import { consumeOpenProject } from "@/lib/project-session";
+import { setCoachProjectId } from "@/features/coach/FractixCoachWidget";
 import type { PixelationResult } from "@shared/schema";
 
 export default function Home() {
@@ -40,6 +41,7 @@ export default function Home() {
     const opened = consumeOpenProject();
     if (!opened?.pixelationResult) return;
     setProjectId(opened.projectId);
+    setCoachProjectId(opened.projectId);
     setProjectName(opened.name);
     setBoardCount(opened.boardCount);
     setBoardLayout(opened.boardLayout);
@@ -49,6 +51,10 @@ export default function Home() {
     setProcessing(false);
     setCurrentStep(3);
   }, []);
+
+  useEffect(() => {
+    setCoachProjectId(projectId);
+  }, [projectId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -70,8 +76,9 @@ export default function Home() {
     setCurrentStep(2);
   };
 
-  const handleStartPixelation = (projectId: string) => {
-    setProjectId(projectId);
+  const handleStartPixelation = (nextProjectId: string) => {
+    setProjectId(nextProjectId);
+    setCoachProjectId(nextProjectId);
     setCurrentStep(3);
     setProcessing(true);
   };
