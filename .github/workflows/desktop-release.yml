@@ -48,6 +48,10 @@ jobs:
           append STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
           append STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
           append STRIPE_PRICE_ID "$STRIPE_PRICE_ID"
+          append STRIPE_PRICE_PRO_ID "$STRIPE_PRICE_PRO_ID"
+          append OPENAI_API_KEY "$OPENAI_API_KEY"
+          append OPENAI_MODEL_FREE "$OPENAI_MODEL_FREE"
+          append OPENAI_MODEL_PRO "$OPENAI_MODEL_PRO"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
@@ -55,6 +59,10 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_PRICE_PRO_ID: ${{ secrets.STRIPE_PRICE_PRO_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL_FREE: ${{ secrets.OPENAI_MODEL_FREE }}
+          OPENAI_MODEL_PRO: ${{ secrets.OPENAI_MODEL_PRO }}
 
       - name: Build desktop packages
         run: npm run build:desktop
@@ -64,6 +72,8 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_PRICE_PRO_ID: ${{ secrets.STRIPE_PRICE_PRO_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           # Build unsigned — code signing is reserved for the iOS pipeline only.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -109,6 +119,10 @@ jobs:
           append STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
           append STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
           append STRIPE_PRICE_ID "$STRIPE_PRICE_ID"
+          append STRIPE_PRICE_PRO_ID "$STRIPE_PRICE_PRO_ID"
+          append OPENAI_API_KEY "$OPENAI_API_KEY"
+          append OPENAI_MODEL_FREE "$OPENAI_MODEL_FREE"
+          append OPENAI_MODEL_PRO "$OPENAI_MODEL_PRO"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
@@ -116,6 +130,10 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_PRICE_PRO_ID: ${{ secrets.STRIPE_PRICE_PRO_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL_FREE: ${{ secrets.OPENAI_MODEL_FREE }}
+          OPENAI_MODEL_PRO: ${{ secrets.OPENAI_MODEL_PRO }}
 
       - name: Build desktop packages
         run: npm run build:desktop
@@ -124,7 +142,9 @@ jobs:
           LICENSE_SIGNING_SECRET: ${{ secrets.LICENSE_SIGNING_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}   
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_PRICE_PRO_ID: ${{ secrets.STRIPE_PRICE_PRO_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           # Build unsigned — code signing is reserved for the iOS pipeline only.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"

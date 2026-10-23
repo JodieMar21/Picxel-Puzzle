@@ -18,7 +18,9 @@ The desktop release workflow ([`.github/workflows/desktop-release.yml`](../.gith
 - `APP_BASE_URL`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_ID`
+- `STRIPE_PRICE_ID` — Basic license (Free Coach)
+- `STRIPE_PRICE_PRO_ID` — Pro license (Pro Coach)
+- `OPENAI_API_KEY` — Fractix Coach (ChatGPT API)
 
 **Signing (optional — omit for unsigned CI builds)**
 

@@ -4,6 +4,7 @@ import https from "node:https";
 import { storage } from "../storage";
 import { hashLicenseKey } from "./licenseService";
 import { sendLicenseKeyEmail } from "./emailService";
+import type { LicensePlan } from "@shared/schema";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -34,15 +35,58 @@ function generateLicenseKey(): string {
   return `FRACTIX-${segments.join("-")}`;
 }
 
+/** Resolve Stripe Price ID from signup plan (price keys stay server-side). */
+export function resolvePriceIdForPlan(plan: LicensePlan): string {
+  if (plan === "pro") {
+    const proPrice = process.env.STRIPE_PRICE_PRO_ID;
+    if (!proPrice) {
+      throw new Error("STRIPE_PRICE_PRO_ID is not configured for Pro licenses.");
+    }
+    return proPrice;
+  }
+  const basicPrice = process.env.STRIPE_PRICE_ID;
+  if (!basicPrice) {
+    throw new Error("STRIPE_PRICE_ID is not configured for Basic licenses.");
+  }
+  return basicPrice;
+}
+
+export function mapStripePriceToPlan(priceId: string | null | undefined): LicensePlan {
+  const proPrice = process.env.STRIPE_PRICE_PRO_ID;
+  const basicPrice = process.env.STRIPE_PRICE_ID;
+  if (priceId && proPrice && priceId === proPrice) return "pro";
+  if (priceId && basicPrice && priceId === basicPrice) return "basic";
+  if (priceId && proPrice && priceId !== basicPrice) {
+    console.warn(`[stripe] Unknown price ${priceId} — defaulting license plan to basic.`);
+  }
+  return "basic";
+}
+
+async function getSessionPriceId(sessionId: string): Promise<string | null> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["line_items.data.price"],
+  });
+  const first = session.line_items?.data?.[0];
+  const price = first?.price;
+  if (!price) return null;
+  return typeof price === "string" ? price : price.id;
+}
+
 async function issueLicenseForSession(input: {
   sessionId: string;
   customerEmail: string;
+  stripePriceId?: string | null;
 }): Promise<string> {
   const existing = await storage.getLicenseByStripeSession(input.sessionId);
   if (existing) {
     console.log(`[stripe] License already issued for session ${input.sessionId} — reusing existing key.`);
     return existing.licenseKey;
   }
+
+  const stripePriceId =
+    input.stripePriceId ?? (await getSessionPriceId(input.sessionId).catch(() => null));
+  const plan = mapStripePriceToPlan(stripePriceId);
 
   const licenseKey = generateLicenseKey();
   const licenseKeyHash = hashLicenseKey(licenseKey);
@@ -52,16 +96,25 @@ async function issueLicenseForSession(input: {
     licenseKeyHash,
     stripeSessionId: input.sessionId,
     customerEmail: input.customerEmail,
+    plan,
+    stripePriceId: stripePriceId ?? null,
   });
 
   await storage.createLicenseEvent({
     licenseKeyHash,
     eventType: "license_issued",
-    metadata: { stripeSessionId: input.sessionId, customerEmail: input.customerEmail },
+    metadata: {
+      stripeSessionId: input.sessionId,
+      customerEmail: input.customerEmail,
+      plan,
+      stripePriceId,
+    },
   });
 
   await sendLicenseKeyEmail({ to: input.customerEmail, licenseKey });
-  console.log(`[stripe] License issued for ${input.customerEmail} (session: ${input.sessionId})`);
+  console.log(
+    `[stripe] License issued for ${input.customerEmail} plan=${plan} (session: ${input.sessionId})`,
+  );
 
   return licenseKey;
 }
@@ -118,7 +171,14 @@ export async function handleStripeWebhook(payload: Buffer, signature: string): P
     return;
   }
 
-  await issueLicenseForSession({ sessionId, customerEmail });
+  let stripePriceId: string | null = null;
+  try {
+    stripePriceId = await getSessionPriceId(sessionId);
+  } catch (error) {
+    console.warn(`[stripe] Could not expand line items for ${sessionId}:`, error);
+  }
+
+  await issueLicenseForSession({ sessionId, customerEmail, stripePriceId });
 }
 
 export async function getLicenseKeyForSession(sessionId: string): Promise<string | null> {
@@ -141,7 +201,9 @@ export async function getLicenseKeyForSession(sessionId: string): Promise<string
   const stripe = getStripe();
   let session;
   try {
-    session = await stripe.checkout.sessions.retrieve(sessionId);
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["line_items.data.price"],
+    });
   } catch (e: unknown) {
     const m = e instanceof Error ? e.message : String(e);
     if (/certificate|self-signed|ssl|tls/i.test(m)) {
@@ -163,5 +225,9 @@ export async function getLicenseKeyForSession(sessionId: string): Promise<string
     throw new Error("Paid Stripe session is missing customer email.");
   }
 
-  return issueLicenseForSession({ sessionId, customerEmail });
+  const first = session.line_items?.data?.[0];
+  const price = first?.price;
+  const stripePriceId = !price ? null : typeof price === "string" ? price : price.id;
+
+  return issueLicenseForSession({ sessionId, customerEmail, stripePriceId });
 }

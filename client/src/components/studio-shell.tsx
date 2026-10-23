@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Box } from "lucide-react";
 import StudioAtmosphere from "@/components/studio-atmosphere";
 import SettingsMenu from "@/components/settings-menu";
+import FractixCoachWidget from "@/features/coach/FractixCoachWidget";
 import { cn } from "@/lib/utils";
 
 interface StudioShellProps {
@@ -115,6 +116,8 @@ export default function StudioShell({
           </div>
         </footer>
       )}
+
+      <FractixCoachWidget />
     </div>
   );
 }

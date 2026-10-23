@@ -1,13 +1,34 @@
-import { licenseActivations, licenseEvents, licenses, projects, type License, type Project, type InsertProject } from "@shared/schema";
+import {
+  coachConversations,
+  coachMessages,
+  coachUsage,
+  licenseActivations,
+  licenseEvents,
+  licenses,
+  projects,
+  type CoachConversation,
+  type CoachMessage,
+  type License,
+  type LicensePlan,
+  type Project,
+  type InsertProject,
+} from "@shared/schema";
 import { db } from "./db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 export interface IStorage {
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined>;
   getAllProjects(): Promise<Project[]>;
-  createLicense(input: { licenseKey: string; licenseKeyHash: string; stripeSessionId: string; customerEmail: string }): Promise<License>;
+  createLicense(input: {
+    licenseKey: string;
+    licenseKeyHash: string;
+    stripeSessionId: string;
+    customerEmail: string;
+    plan?: LicensePlan;
+    stripePriceId?: string | null;
+  }): Promise<License>;
   getLicenseByHash(licenseKeyHash: string): Promise<License | undefined>;
   getLicenseByStripeSession(stripeSessionId: string): Promise<License | undefined>;
   getLicenseActivationByDevice(licenseKeyHash: string, deviceId: string): Promise<typeof licenseActivations.$inferSelect | undefined>;
@@ -26,6 +47,22 @@ export interface IStorage {
     eventType: string;
     metadata?: Record<string, unknown>;
   }): Promise<void>;
+  createCoachConversation(input: { licenseKeyHash: string; deviceId: string }): Promise<CoachConversation>;
+  getCoachConversation(id: string): Promise<CoachConversation | undefined>;
+  touchCoachConversation(id: string): Promise<void>;
+  addCoachMessage(input: {
+    conversationId: string;
+    role: string;
+    content: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<CoachMessage>;
+  getCoachMessages(conversationId: string, limit?: number): Promise<CoachMessage[]>;
+  getCoachUsageCount(licenseKeyHash: string, day: string): Promise<number>;
+  incrementCoachUsage(licenseKeyHash: string, day: string): Promise<number>;
+  updateLicenseTotp(
+    licenseKeyHash: string,
+    input: { totpSecretEnc: string | null; totpEnabled: boolean },
+  ): Promise<License | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -55,10 +92,24 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(projects).orderBy(desc(projects.updatedAt));
   }
 
-  async createLicense(input: { licenseKey: string; licenseKeyHash: string; stripeSessionId: string; customerEmail: string }): Promise<License> {
+  async createLicense(input: {
+    licenseKey: string;
+    licenseKeyHash: string;
+    stripeSessionId: string;
+    customerEmail: string;
+    plan?: LicensePlan;
+    stripePriceId?: string | null;
+  }): Promise<License> {
     const [license] = await db
       .insert(licenses)
-      .values(input)
+      .values({
+        licenseKey: input.licenseKey,
+        licenseKeyHash: input.licenseKeyHash,
+        stripeSessionId: input.stripeSessionId,
+        customerEmail: input.customerEmail,
+        plan: input.plan ?? "basic",
+        stripePriceId: input.stripePriceId ?? null,
+      })
       .returning();
     return license;
   }
@@ -153,6 +204,91 @@ export class DatabaseStorage implements IStorage {
       eventType: input.eventType,
       metadata: input.metadata,
     });
+  }
+
+  async createCoachConversation(input: { licenseKeyHash: string; deviceId: string }): Promise<CoachConversation> {
+    const [row] = await db
+      .insert(coachConversations)
+      .values({
+        licenseKeyHash: input.licenseKeyHash,
+        deviceId: input.deviceId,
+      })
+      .returning();
+    return row;
+  }
+
+  async getCoachConversation(id: string): Promise<CoachConversation | undefined> {
+    const [row] = await db.select().from(coachConversations).where(eq(coachConversations.id, id));
+    return row;
+  }
+
+  async touchCoachConversation(id: string): Promise<void> {
+    await db
+      .update(coachConversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(coachConversations.id, id));
+  }
+
+  async addCoachMessage(input: {
+    conversationId: string;
+    role: string;
+    content: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<CoachMessage> {
+    const [row] = await db
+      .insert(coachMessages)
+      .values({
+        conversationId: input.conversationId,
+        role: input.role,
+        content: input.content,
+        metadata: input.metadata,
+      })
+      .returning();
+    return row;
+  }
+
+  async getCoachMessages(conversationId: string, limit = 20): Promise<CoachMessage[]> {
+    return db
+      .select()
+      .from(coachMessages)
+      .where(eq(coachMessages.conversationId, conversationId))
+      .orderBy(asc(coachMessages.createdAt))
+      .limit(limit);
+  }
+
+  async getCoachUsageCount(licenseKeyHash: string, day: string): Promise<number> {
+    const [row] = await db
+      .select()
+      .from(coachUsage)
+      .where(and(eq(coachUsage.licenseKeyHash, licenseKeyHash), eq(coachUsage.day, day)));
+    return row?.count ?? 0;
+  }
+
+  async incrementCoachUsage(licenseKeyHash: string, day: string): Promise<number> {
+    const [row] = await db
+      .insert(coachUsage)
+      .values({ licenseKeyHash, day, count: 1 })
+      .onConflictDoUpdate({
+        target: [coachUsage.licenseKeyHash, coachUsage.day],
+        set: { count: sql`${coachUsage.count} + 1` },
+      })
+      .returning();
+    return row.count;
+  }
+
+  async updateLicenseTotp(
+    licenseKeyHash: string,
+    input: { totpSecretEnc: string | null; totpEnabled: boolean },
+  ): Promise<License | undefined> {
+    const [license] = await db
+      .update(licenses)
+      .set({
+        totpSecretEnc: input.totpSecretEnc,
+        totpEnabled: input.totpEnabled,
+      })
+      .where(eq(licenses.licenseKeyHash, licenseKeyHash))
+      .returning();
+    return license;
   }
 }
 

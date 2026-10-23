@@ -258,7 +258,7 @@ export default function LicenseGate({ children }: PropsWithChildren) {
             </div>
 
             <div className="space-y-3 text-center">
-              <p className="text-sm text-muted-foreground">Don't have a license yet?</p>
+              <p className="text-sm text-muted-foreground">Don&apos;t have a license yet?</p>
               <Button
                 type="button"
                 variant="outline"

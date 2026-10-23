@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,11 @@ const TOPICS = [
   { value: "other", label: "Something else" },
 ];
 
+function topicFromQuery(value: string | null): string {
+  if (!value) return "technical";
+  return TOPICS.some((t) => t.value === value) ? value : "technical";
+}
+
 interface ContactFormProps {
   className?: string;
   compact?: boolean;
@@ -34,6 +39,14 @@ export default function ContactForm({ className, compact = false }: ContactFormP
   const [topic, setTopic] = useState("technical");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setTopic(topicFromQuery(params.get("topic")));
+    const prefill = params.get("prefill");
+    if (prefill) setMessage(prefill);
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
