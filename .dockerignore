@@ -94,6 +94,7 @@ uploads/*
 # Database files
 *.sql
 migrations/*.sql
+!migrations/*.sql
 
 # Archive files
 *.tar.gz

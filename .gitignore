@@ -6,6 +6,8 @@ vite.config.ts.*
 *.tar.gz
 .env
 *.sql
+!migrations/*.sql
+migrations/0002_hard_triathlon.sql
 *release/**
 uploads/**
 
