@@ -117,6 +117,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
-# Start production server
-CMD ["npm", "start"]
+# Apply schema changes before starting the production server.
+CMD ["sh", "-c", "npm run db:push && npm start"]
   
