@@ -93,6 +93,7 @@ RUN adduser -S nextjs -u 1001
 # Copy package files and install production dependencies
 COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+RUN chown -R nextjs:nodejs /app/node_modules
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
@@ -101,6 +102,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 COPY --chown=nextjs:nodejs migrations ./migrations
 COPY --chown=nextjs:nodejs shared ./shared
 COPY --chown=nextjs:nodejs drizzle.config.ts ./
+COPY --chown=nextjs:nodejs server/postgresConnection.ts ./server/postgresConnection.ts
 
 # Create uploads directory with proper permissions
 RUN mkdir -p uploads && chown -R nextjs:nodejs uploads
