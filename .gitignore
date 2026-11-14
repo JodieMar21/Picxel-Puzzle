@@ -4,7 +4,6 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-.env
 *.sql
 !migrations/*.sql
 migrations/0002_hard_triathlon.sql
@@ -13,3 +12,4 @@ uploads/**
 
 # Local desktop packaging secrets (CI generates this file before electron-builder)
 electron-desktop-env/desktop.env
+config.bat
